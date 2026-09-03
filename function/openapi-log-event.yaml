@@ -1,0 +1,103 @@
+openapi: "3.0.3"
+info:
+  title: SME Demo Event Log
+  version: "1.0.0"
+  description: >
+    Insert a row into dbo.demo_events. Called by the Triage Agent once per
+    stage of a run so the Demo Cockpit can render the Agent Flow tile in
+    real time. Fire-and-forget; no reads. Cockpit reads via its own SQL path.
+servers:
+  - url: https://func-sme.azurewebsites.net
+    description: Function App hostname.
+paths:
+  /api/log_event:
+    post:
+      operationId: log_event
+      summary: Log one stage of a triage run.
+      description: >
+        Idempotency isn't required — repeat calls produce distinct events
+        (event_id is IDENTITY). Use monotonically increasing stages within
+        a single run_id for legible cockpit rendering.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogEventRequest"
+      responses:
+        "200":
+          description: Row inserted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogEventResult"
+        "400":
+          description: Missing required field.
+        "500":
+          description: SQL failure.
+components:
+  schemas:
+    LogEventRequest:
+      type: object
+      required: [run_id, stage, status]
+      properties:
+        run_id:
+          type: string
+          description: Foundry run id (or any GUID unique per demo run).
+          example: "run_abc123"
+        scenario:
+          type: string
+          enum: [transient, data_quality, escalate]
+          description: Which branch of the flow this event belongs to.
+        stage:
+          type: string
+          enum:
+            - email_received
+            - incident_opened
+            - duplicate_suppressed
+            - playbook_retrieved
+            - dq_delegated
+            - dq_verdict
+            - tier1_classified
+            - refresh_triggered
+            - dq_flagged
+            - flag_written
+            - policy_denied
+            - action_refused
+            - approval_requested
+            - approval_granted
+            - approval_denied
+            - model_contradicted
+            - incident_closed
+            - escalated
+            - teams_posted
+          description: Named stage of the triage workflow.
+        status:
+          type: string
+          enum: [ok, failed, info, error]
+        detail:
+          type: string
+          description: Short human-readable summary. Shown in the cockpit tile.
+          example: "verdict=duplicates_found, dup_count=1"
+        trace_url:
+          type: string
+          description: Deep link to the Foundry run trace (optional).
+        agent:
+          type: string
+          description: Which agent emitted this event. Populated by every agent.
+          enum: [triage-agent, dq-agent]
+        prompt_hash:
+          type: string
+          description: >
+            16-char SHA-256 prefix of the agent's currently deployed prompt.
+            Fetched once per run via /api/admin/current_prompt_hash. Makes a
+            prompt change traceable in run history.
+    LogEventResult:
+      type: object
+      required: [event_id, created_at]
+      properties:
+        event_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Technical walkthrough — SME BI Triage on Azure AI Foundry</title>
+<link rel="stylesheet" href="walkthrough.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand">SME BI Triage <span>&middot;</span> Foundry</span>
+  <a href="#overview">Overview</a>
+  <a href="#architecture">Architecture</a>
+  <a href="#scenario-1">Scenario 1</a>
+  <a href="#scenario-2">Scenario 2</a>
+  <a href="#scenario-2b">2b</a>
+  <a href="#scenario-3">3</a>
+  <a href="#scenario-4">4</a>
+  <a href="#failure-path">Failure</a>
+  <a href="#observability">Observability</a>
+  <a href="#deploy">Deploy</a>
+  <span class="docref" style="margin-left:auto">Persona view <b>PERSONAS.html</b></span>
+</nav>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Microsoft Foundry &middot; two connected prompt agents &middot; SM Energy demo</div>
+  <h1>Technical walkthrough:<br>BI refresh triage with safety rails</h1>
+  <p class="sub">
+    A Triage Agent and a Data Quality Agent, wired in Microsoft Foundry, handle a simulated Power BI
+    refresh failure end-to-end. Six scenarios cover the happy path, the flag path, three ways the
+    controller refuses to do the wrong thing, and one deliberate failure.
+  </p>
+  <div class="meta-row">
+    <span class="chip on">Foundry prompt agents</span>
+    <span class="chip on">A2A (preview)</span>
+    <span class="chip on">Managed-identity OpenAPI tools</span>
+    <span class="chip on">SQL policy ledger</span>
+    <span class="chip">Model: gpt-4o</span>
+    <span class="chip">Tenant: (customer demo)</span>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="overview">
+  <h2><span class="num">1</span> Overview</h2>
+  <p class="lede">
+    The demo is one thin flow with six branches. Every branch ends in a Teams post and a
+    <code>demo_events</code> row so the run is legible from Foundry traces or SQL alone.
+  </p>
+
+  <h3>What runs where</h3>
+  <table>
+    <thead>
+      <tr><th>Component</th><th>Kind</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>Triage Agent</b></td>
+        <td><span class="tag native">Foundry prompt agent</span></td>
+        <td>Orchestrator. Calls incidents/policy endpoints, delegates dedup, decides the action.</td>
+      </tr>
+      <tr>
+        <td><b>Data Quality Agent</b></td>
+        <td><span class="tag native">Foundry prompt agent</span></td>
+        <td>Called by Triage over A2A (preview). Owns the flag write.</td>
+      </tr>
+      <tr>
+        <td><b>Function App <code>func-sme</code></b></td>
+        <td><span class="tag custom">Azure Functions (Python)</span></td>
+        <td>DQ check, flag write, event log, incident dedup, policy ledger. Poller reads mailbox every 30s.</td>
+      </tr>
+      <tr>
+        <td><b>Azure SQL <code>sql-db-sme</code></b></td>
+        <td><span class="tag custom">Serverless</span></td>
+        <td>5 tables: <code>source_orders</code>, <code>dq_flags</code>, <code>demo_events</code>, <code>incidents</code>, <code>policy_ledger</code>.</td>
+      </tr>
+      <tr>
+        <td><b>Monitored mailbox <code>bi-triage-demo@…</code></b></td>
+        <td><span class="tag native">M365</span></td>
+        <td>Poller reads <code>[BI-DEMO]</code>-prefixed unread mail, extracts the JSON payload, invokes Triage.</td>
+      </tr>
+      <tr>
+        <td><b>Microsoft Teams</b></td>
+        <td><span class="tag native">Power Automate Workflows webhook</span></td>
+        <td>Adaptive Card destination for every outcome (including refusals).</td>
+      </tr>
+      <tr>
+        <td><b>Power BI REST</b></td>
+        <td><span class="tag native">Native</span></td>
+        <td><code>Datasets - Refresh Dataset</code>, managed-identity auth on the workspace.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>The six branches</h3>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Scenario</th><th>Trigger</th><th>Outcome</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>Transient</td><td>Email: <code>[BI-DEMO] Daily Orders refresh failed</code></td><td>PBI REST refresh</td></tr>
+      <tr><td>2</td><td>Data quality</td><td>Email: <code>[BI-DEMO] Daily Orders refresh failed (DQ warning)</code></td><td>DQ flag row, no refresh</td></tr>
+      <tr><td>2b <span class="tag new">new</span></td><td>Known issue</td><td>Same email sent twice</td><td>2nd suppressed by signature</td></tr>
+      <tr><td>3 <span class="tag new">new</span></td><td>Policy block</td><td>Email with <code>simulate_retry:true</code> in the body</td><td>2nd refresh denied by budget</td></tr>
+      <tr><td>4 <span class="tag new">new</span></td><td>Unknown action</td><td>Email with <code>try_unlisted_action:true</code></td><td>Off-allowlist action refused</td></tr>
+      <tr><td>F</td><td>Failure path</td><td>Email pointing at a bad source table</td><td>Error span in trace &rarr; escalated</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="architecture">
+  <h2><span class="num">2</span> Architecture</h2>
+  <p class="lede">
+    Everything the audience should trust lives outside the prompt. Signatures are computed
+    server-side. Budgets are enforced by a SQL row before an action is taken, not by wording in
+    the instructions.
+  </p>
+
+  <div class="flow"><pre>
+                  Simulated PBI error email
+                            │
+                            ▼
+              ┌─────────────────────────────┐
+              │  <b>Triage Agent</b> (Foundry)      │
+              │  prompt-agent, gpt-4o       │
+              └───────────────┬─────────────┘
+                              │
+     ┌────────────────────────┼────────────────────────┐
+     │                        │                        │
+     ▼                        ▼                        ▼
+  <b>func-sme</b>                 <b>func-sme</b>                <b>DQ Agent</b> (A2A)
+  <span class="w">/incidents</span>              <span class="w">/policy/charge</span>          same project, unpublished
+  <span class="w">/policy/propose</span>         <span class="w">/log_event</span>              │
+     │                        │                        ▼
+     ▼                        ▼                     <b>func-sme</b>
+  incidents                 policy_ledger           <span class="w">/dq/check</span>, <span class="w">/dq/flag</span>
+     │                        │                        │
+     └────────┬───────────────┴────────────┬───────────┘
+              │                            │
+              ▼                            ▼
+        <b>Power BI REST</b>              <b>Teams webhook</b>
+        <span class="g">Datasets - Refresh</span>       <span class="g">Adaptive Card</span></pre></div>
+
+  <h3>Auth on every hop</h3>
+  <table>
+    <thead><tr><th>Caller</th><th>Callee</th><th>Mechanism</th></tr></thead>
+    <tbody>
+      <tr><td>Foundry project MI</td><td>func-sme</td><td>Entra token, aud <code>api://func-sme</code>. Easy Auth v2 gate.</td></tr>
+      <tr><td>func-sme MI</td><td>Azure SQL</td><td>AAD access token, <code>database.windows.net/.default</code>.</td></tr>
+      <tr><td>Triage instance MI</td><td>DQ agent (A2A)</td><td>AgenticIdentityToken auth. Requires <code>Azure AI Developer</code> + <code>Cognitive Services User</code> on the account.</td></tr>
+      <tr><td>Foundry project MI</td><td>Power BI REST</td><td>MI OpenAPI tool, aud <code>analysis.windows.net/powerbi/api</code>.</td></tr>
+      <tr><td>Triage agent</td><td>Teams channel</td><td>Anonymous webhook (signed URL). No secrets in prompt.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note warn">
+    <span class="label">Deploy gotcha</span>
+    <b>Adding an OpenAPI tool to a live prompt agent forces DELETE + POST</b>, which rotates the
+    instance identity. Every rotation needs <code>Azure AI Developer</code> and
+    <code>Cognitive Services User</code> re-granted on the AI account. See §<a href="#deploy">Deploy</a>.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="scenario-1">
+  <h2><span class="num">3</span> Scenario 1 — Transient</h2>
+  <p class="lede">
+    Refresh failed, data is clean, one retry is correct. This is the branch every audience expects
+    to see first.
+  </p>
+
+
+  <p>
+    Payload in the email body has <code>source_table=dbo.source_orders, key_column=line_id</code>.
+    Since <code>line_id</code> is unique, DQ returns <code>clean</code> and Triage takes the refresh branch.
+  </p>
+
+  <div class="note ok">
+    <span class="label">What to point at</span>
+    The <b>Foundry run trace</b> shows the Triage → DQ handoff as a nested tool call. Open it during
+    Q1/Q2. Same trace exposes the Power BI REST call and its <code>202 Accepted</code> response.
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="scenario-2">
+  <h2><span class="num">4</span> Scenario 2 — Data quality</h2>
+  <p class="lede">
+    DQ finds duplicates on the declared key. No retry — the underlying data is wrong. Flag and
+    notify.
+  </p>
+
+
+  <p>
+    Trigger: email with <code>key_column=order_id</code> in the payload. Same table, different key so the duplicates surface.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="scenario-2b">
+  <h2><span class="num">5</span> Scenario 2b — Known issue (dedup by signature)</h2>
+  <p class="lede">
+    The same alert arrives twice. The controller recognizes it by signature and suppresses the
+    second run. This is what stops the agent refreshing forty times during an outage.
+  </p>
+
+
+  <div class="note">
+    <span class="label">Server-side by design</span>
+    The signature is <b>computed by the Function App</b>, not the prompt. Editing agent
+    instructions cannot change it — that's the point. See
+    <code>function/function_app.py</code> <code>_incident_signature()</code>.
+  </div>
+
+  <p>Trigger: send the scenario 1 email a second time within a few minutes.</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="scenario-3">
+  <h2><span class="num">6</span> Scenario 3 — Policy block (remediation budget)</h2>
+  <p class="lede">
+    After a successful refresh, the agent is prompted to try again. The controller charges the
+    per-run ledger, sees the budget is spent, and refuses.
+  </p>
+
+
+  <div class="note ok">
+    <span class="label">Why this generalizes</span>
+    <b>Limits live in the controller, not the prompt.</b> A future request to "just retry once more"
+    can't be granted by rewording — it needs a policy_ledger change. That's the safety-rails story.
+  </div>
+
+  <p>Trigger: email with <code>simulate_retry:true</code> in the payload. Use a distinct report name (<code>Sales Ops Overview</code>) so the signature does not collide with scenario 1.</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="scenario-4">
+  <h2><span class="num">7</span> Scenario 4 — Unknown action (allowlist)</h2>
+  <p class="lede">
+    The agent proposes an action the allowlist doesn't cover. The controller refuses before
+    dispatch and the agent escalates.
+  </p>
+
+
+  <div class="note">
+    <span class="label">Fail-closed by design</span>
+    Even if the model hallucinates a plausible-sounding action, it never leaves the Function App.
+    Anything not on the allowlist ends in a refusal row and a Teams escalation.
+  </div>
+
+  <p>Trigger: email with <code>try_unlisted_action:true</code> in the payload.</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="failure-path">
+  <h2><span class="num">8</span> Failure path</h2>
+  <p class="lede">
+    A deliberately broken run so the audience can see how errors surface in the Foundry trace and
+    in Teams.
+  </p>
+
+
+  <p>Trigger: email pointing at a non-existent source table.</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="observability">
+  <h2><span class="num">9</span> Observability</h2>
+
+  <div class="gallery">
+    <div class="card">
+      <div class="head"><h4>Foundry run traces</h4><div class="role">Application Insights backing store</div></div>
+      <div class="body">Parent Triage run with child DQ run linked. Every OpenAPI tool call is a span with request/response. Errors surface as red spans. Deep-linkable — the Teams card includes the URL.</div>
+    </div>
+    <div class="card">
+      <div class="head"><h4>dbo.demo_events</h4><div class="role">Fire-and-forget append log</div></div>
+      <div class="body">One row per <code>log_event</code> call. Persistent audit — even runs that never made it to Teams have a paper trail.</div>
+    </div>
+    <div class="card">
+      <div class="head"><h4>dbo.incidents + dbo.policy_ledger <span class="tag new">new</span></h4><div class="role">Signature dedup + policy audit</div></div>
+      <div class="body">Every suppression, every allow, every deny lands here. Point at the SQL row that caused a refusal — no leap of faith required.</div>
+    </div>
+    <div class="card">
+      <div class="head"><h4>Teams Adaptive Cards</h4><div class="role">Customer-visible surface</div></div>
+      <div class="body">One card per terminal outcome, including refusals. Card includes report, error, action, outcome, timestamp, and a trace deep-link.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="deploy">
+  <h2><span class="num">10</span> Deploy</h2>
+
+  <h3>Function App</h3>
+<pre>cd function
+func azure functionapp publish func-sme --python</pre>
+
+  <h3>SQL schema (idempotent — adds new tables in place)</h3>
+<pre>POST https://func-sme.azurewebsites.net/api/demo/reset
+Authorization: Bearer &lt;api://func-sme token&gt;</pre>
+
+  <h3>Triage agent</h3>
+<pre>cd agents
+./deploy-agents.ps1 -Only triage</pre>
+
+  <div class="note warn">
+    <span class="label">Recovery for PATCH-drops-tools</span>
+    Foundry silently drops added OpenAPI tools on PATCH. The script falls back to DELETE + POST,
+    which rotates the instance identity. After a rotation, grant the new instance principal these
+    two roles on the AI account, then wait ~60s:
+<pre>az role assignment create --assignee-object-id &lt;new-mi&gt; \
+  --assignee-principal-type ServicePrincipal \
+  --role 'Azure AI Developer' \
+  --scope /subscriptions/.../accounts/ai-foundry-sme
+
+az role assignment create --assignee-object-id &lt;new-mi&gt; \
+  --assignee-principal-type ServicePrincipal \
+  --role 'Cognitive Services User' \
+  --scope /subscriptions/.../accounts/ai-foundry-sme</pre>
+    Without these, the A2A hop fails with <code>Failed to fetch agent card: 404</code>.
+  </div>
+</section>
+
+<footer>
+  Live tenant: <code>ai-foundry-sme / proj-sme</code>.
+  Six scenarios verified end-to-end 2026-08-31.
+  Companion doc: <a href="PERSONAS.html">PERSONAS.html</a>.
+</footer>
+
+</div>
+</body>
+</html>

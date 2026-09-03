@@ -1,0 +1,58 @@
+openapi: "3.0.3"
+info:
+  title: SME Approval Request
+  version: "1.0.0"
+  description: >
+    Human-in-the-loop approval gate (Scenarios 5 + 6). Triage calls this
+    when policy_charge returns requires_approval, then polls
+    /api/approvals/status until the human decides or the TTL expires.
+    Fail-closed: expired, missing, malformed, or reused approvals are all "no".
+servers:
+  - url: https://func-sme.azurewebsites.net
+paths:
+  /api/approvals/request:
+    post:
+      operationId: request_approval
+      summary: Issue an approval fingerprint + Adaptive Card.
+      description: >
+        Returns a 64-char HMAC fingerprint that Triage embeds in a Teams
+        Adaptive Card. When Teams sends the Action.Submit back to
+        /api/approvals/decide, the fingerprint proves the decision came
+        from a real request Triage originated.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalRequest"
+      responses:
+        "200":
+          description: Approval issued (or previously issued for the same key).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalIssued"
+        "500":
+          description: APPROVAL_HMAC_SECRET not configured or SQL failure.
+components:
+  schemas:
+    ApprovalRequest:
+      type: object
+      required: [run_id, action]
+      properties:
+        run_id:   { type: string, description: "Foundry run id." }
+        action:   { type: string, description: "Requested action name." }
+        args:     { type: object, description: "Opaque; hashed for fingerprinting." }
+        requested_by: { type: string, description: "Agent name for auditing." }
+    ApprovalIssued:
+      type: object
+      properties:
+        fingerprint:   { type: string, description: "64-char hex — pass to /approvals/status." }
+        expires_at:    { type: string, format: date-time }
+        ttl_min:       { type: integer }
+        adaptive_card:
+          type: object
+          description: >
+            AdaptiveCard body. Triage embeds this in the standard Teams
+            envelope (attachments[].contentType=application/vnd.microsoft.card.adaptive)
+            when calling post_teams_message.

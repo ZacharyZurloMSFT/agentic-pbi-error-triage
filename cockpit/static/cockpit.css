@@ -1,0 +1,501 @@
+/* Demo Cockpit — architecture-canvas layout. Projector-legible dark theme. */
+
+:root {
+    --bg:          #0d1117;
+    --bg-tile:     #161b22;
+    --bg-tile-2:   #1c2129;
+    --bg-inset:    #0b0f14;
+    --fg:          #e6edf3;
+    --fg-dim:      #8b949e;
+    --fg-faint:    #6e7681;
+    --border:      #30363d;
+    --border-soft: #21262d;
+    --accent:      #58a6ff;
+    --ok:          #3fb950;
+    --active:      #d29922;
+    --warn:        #d29922;
+    --err:         #f85149;
+    --refused:     #f85149;
+    --idle:        #6e7681;
+
+    --radius:      10px;
+    --pad:         14px;
+    --font:        "Segoe UI", -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+    --mono:        "Cascadia Code", "Consolas", "SF Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font);
+    font-size: 15px;
+    height: 100vh;
+    overflow: hidden;
+}
+
+body { display: flex; flex-direction: column; }
+
+/* ---------- HEADER ---------- */
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-tile);
+    flex: 0 0 auto;
+    gap: 20px;
+}
+.title { font-size: 18px; font-weight: 600; }
+.title .brand { color: var(--accent); }
+.title .sep { color: var(--fg-dim); margin: 0 8px; }
+.right { display: flex; align-items: center; gap: 20px; }
+.clock { font-family: var(--mono); color: var(--fg-dim); font-size: 14px; }
+
+.countdown {
+    text-align: right;
+    line-height: 1.15;
+    padding-right: 12px;
+    border-right: 1px solid var(--border);
+}
+.countdown-label {
+    font-size: 10px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--fg-faint);
+}
+.countdown-value {
+    font-family: var(--mono);
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+}
+.countdown-value .unit { font-size: 15px; color: var(--fg-dim); font-weight: 400; margin-left: 3px; }
+.countdown-value.polling { color: var(--active); animation: pulse 800ms infinite; }
+.countdown-note { font-size: 11px; color: var(--fg-faint); font-family: var(--mono); }
+
+.btn {
+    background: var(--bg-tile-2);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 13px;
+}
+.btn:hover { background: #262c36; border-color: var(--accent); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---------- GRID ---------- */
+main.grid {
+    display: grid;
+    grid-template-columns: 320px 1fr 340px;
+    /* Row 1 (Live Flow) gets a generous minimum so it doesn't shrink when the
+       state + safety rows are present. Page is scrollable. */
+    grid-template-rows: minmax(560px, 1fr) auto auto;
+    gap: 12px;
+    padding: 12px;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#tile-emails { grid-column: 1; grid-row: 1; }
+#tile-canvas { grid-column: 2; grid-row: 1; min-height: 560px; }
+#tile-feed   { grid-column: 3; grid-row: 1; }
+#tile-state  { grid-column: 1 / span 3; grid-row: 2; min-height: 500px; }
+#tile-safety { grid-column: 1 / span 3; grid-row: 3; min-height: 500px; }
+
+.panel {
+    background: var(--bg-tile);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--pad);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.panel h2 {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-dim);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.tile-hint {
+    font-size: 11px;
+    color: var(--fg-dim);
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+}
+
+/* ---------- EMAIL TEMPLATES ---------- */
+.email-help {
+    font-size: 12px;
+    color: var(--fg-dim);
+    margin-bottom: 12px;
+    line-height: 1.5;
+    padding: 8px 10px;
+    background: var(--bg-inset);
+    border-radius: 6px;
+    border-left: 2px solid var(--accent);
+}
+.email-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+.email-card {
+    background: var(--bg-tile-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+.email-card summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.email-card summary::-webkit-details-marker { display: none; }
+.email-card .em-title {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--fg);
+}
+.email-card .em-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--bg-inset);
+    color: var(--fg-dim);
+    white-space: nowrap;
+}
+.email-card .em-tag.new { color: var(--ok); border: 1px solid rgba(63, 185, 80, 0.3); }
+.email-card .em-tag.fail { color: var(--err); border: 1px solid rgba(248, 81, 73, 0.3); }
+.email-card .em-desc { font-size: 12px; color: var(--fg-dim); margin: 6px 0 8px; line-height: 1.4; }
+.em-field {
+    margin-top: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+}
+.em-field .em-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--fg-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 9px;
+    margin-bottom: 3px;
+}
+.em-field .copy-btn {
+    background: transparent;
+    border: 1px solid var(--border-soft);
+    color: var(--fg-dim);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    cursor: pointer;
+    font-family: var(--font);
+}
+.em-field .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+.em-field .copy-btn.copied { color: var(--ok); border-color: var(--ok); }
+.em-field pre {
+    margin: 0;
+    background: var(--bg-inset);
+    border: 1px solid var(--border-soft);
+    border-radius: 4px;
+    padding: 6px 8px;
+    color: var(--fg);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 140px;
+    overflow-y: auto;
+}
+
+/* ---------- CANVAS ---------- */
+.canvas-wrap {
+    background: var(--bg-inset);
+    border-radius: 8px;
+    padding: 12px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid var(--border-soft);
+    /* Center the SVG both axes so aspect-preserved scaling leaves margins,
+       not one-sided gaps. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.canvas-wrap .mermaid { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+.canvas-wrap svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+.canvas-wrap .mermaid { color: var(--fg); font-family: var(--font) !important; }
+
+/* Node state classes bound in the Mermaid classDef. */
+.canvas-wrap .node.idle    rect, .canvas-wrap .node.idle    polygon,
+.canvas-wrap .node.idle    circle,.canvas-wrap .node.idle    path { fill: var(--bg-tile); stroke: var(--idle); stroke-width: 1.5px; }
+.canvas-wrap .node.idle    .label, .canvas-wrap .node.idle text { fill: var(--fg-faint) !important; color: var(--fg-faint) !important; }
+
+/* Mermaid classes are applied via classDef in the generated source — see cockpit.js */
+
+.legend {
+    display: flex;
+    gap: 18px;
+    padding: 8px 4px 0;
+    font-size: 11px;
+    color: var(--fg-dim);
+    flex: 0 0 auto;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--idle);
+    border: 1.5px solid var(--idle);
+}
+.dot.idle    { background: var(--bg-tile);  border-color: var(--idle); }
+.dot.active  { background: var(--active);   border-color: var(--active); animation: pulse 1s infinite; }
+.dot.ok      { background: var(--ok);       border-color: var(--ok); }
+.dot.error   { background: var(--err);      border-color: var(--err); }
+.dot.refused { background: transparent;     border: 1.5px dashed var(--refused); }
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.55; }
+}
+
+/* ---------- EVENT FEED ---------- */
+.feed {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    font-family: var(--mono);
+    font-size: 12px;
+}
+.feed li {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border-soft);
+    display: grid;
+    grid-template-columns: 62px 1fr 20px;
+    gap: 8px;
+    align-items: baseline;
+    border-left: 3px solid transparent;
+    animation: fade-in 400ms ease-out;
+}
+.feed li.new { animation: flash 1.4s ease-out; }
+.feed li .t   { color: var(--fg-faint); font-size: 11px; }
+.feed li .st  { color: var(--fg); }
+.feed li .st .stage { color: var(--fg); font-weight: 600; }
+.feed li .st .detail { color: var(--fg-dim); margin-left: 6px; font-size: 11px; }
+.feed li .ic  { text-align: right; }
+.feed li.ok      .ic { color: var(--ok); }
+.feed li.info    .ic { color: var(--accent); }
+.feed li.error   .ic { color: var(--err); }
+.feed li.failed  .ic { color: var(--err); }
+
+.feed li.run-a { border-left-color: var(--accent); }
+.feed li.run-b { border-left-color: #a371f7; }
+.feed li.run-c { border-left-color: #238636; }
+
+@keyframes fade-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes flash {
+    0%   { background: rgba(88, 166, 255, 0.35); }
+    100% { background: transparent; }
+}
+
+/* ---------- STATE TABLES ---------- */
+.state-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+.state-block {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-tile-2);
+    border-radius: 6px;
+    padding: 8px 10px;
+    overflow: hidden;
+    min-height: 0;
+}
+.subhead {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--fg-dim);
+}
+.badge {
+    background: var(--bg-inset);
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    color: var(--fg);
+    font-family: var(--mono);
+}
+.badge-flag { background: rgba(210, 153, 34, 0.2); color: var(--warn); }
+.badge-info { background: rgba(88, 166, 255, 0.15); color: var(--accent); }
+
+.table-wrap { overflow: auto; flex: 1 1 auto; min-height: 0; }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    font-family: var(--mono);
+}
+th, td {
+    text-align: left;
+    padding: 3px 6px;
+    border-bottom: 1px solid var(--border-soft);
+    white-space: nowrap;
+}
+th {
+    color: var(--fg-dim);
+    font-weight: 500;
+    position: sticky;
+    top: 0;
+    background: var(--bg-tile-2);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+tr.dup { background: rgba(210, 153, 34, 0.08); }
+tr.new { animation: flash 1.5s ease-out; }
+tr.policy-deny { background: rgba(248, 81, 73, 0.08); color: var(--err); }
+tr.policy-deny td { color: var(--err); }
+
+/* ---------- FOOTER ---------- */
+footer {
+    padding: 6px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-tile);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--fg-dim);
+    flex: 0 0 auto;
+}
+.status.ok  { color: var(--ok); }
+.status.err { color: var(--err); }
+.small { font-family: var(--mono); }
+
+
+/* -------------------- safety-rail tile additions -------------------- */
+
+.mini-hint {
+    color: var(--fg-faint);
+    font-weight: 400;
+    font-size: 11px;
+    margin-left: 6px;
+}
+.badge-warn {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+.pill {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+}
+.pill.outcome-ok    { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.pill.outcome-warn  { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.pill.outcome-info  { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+.muted { color: var(--fg-faint); font-style: italic; }
+.mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 11px; }
+
+/* Approvals tile — inline Approve/Deny buttons */
+.approve-cell { white-space: nowrap; text-align: right; }
+.btn.tiny {
+    padding: 2px 8px;
+    font-size: 12px;
+    line-height: 1.2;
+    margin-left: 4px;
+}
+.btn.tiny.approve { background: #22c55e; color: #000; }
+.btn.tiny.approve:hover:not([disabled]) { background: #16a34a; }
+.btn.tiny.deny { background: #ef4444; color: #fff; }
+.btn.tiny.deny:hover:not([disabled]) { background: #dc2626; }
+.btn.tiny[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+/* Playbook input row */
+.playbook-input {
+    display: flex;
+    gap: 6px;
+    padding: 6px 8px 8px;
+    align-items: center;
+}
+.playbook-input input {
+    flex: 1;
+    background: var(--bg-2, #0f1419);
+    color: var(--fg, #e5e7eb);
+    border: 1px solid var(--border, #1f2937);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-family: inherit;
+}
+.playbook-input input:focus {
+    outline: none;
+    border-color: var(--accent, #38bdf8);
+}
+.btn.small {
+    padding: 3px 10px;
+    font-size: 12px;
+}
+
+/* --------- live-flow status polish --------- */
+/* Pulse the currently-active node so the presenter can see what is running now. */
+@keyframes flow-pulse {
+    0%   { filter: drop-shadow(0 0 0 rgba(210, 153, 34, 0.0)); }
+    50%  { filter: drop-shadow(0 0 6px rgba(210, 153, 34, 0.85)); }
+    100% { filter: drop-shadow(0 0 0 rgba(210, 153, 34, 0.0)); }
+}
+g.node.pulse-active {
+    animation: flow-pulse 1.2s ease-in-out infinite;
+}
+
+/* Make the completion/active hint above the diagram stand out. */
+#canvas-hint {
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}

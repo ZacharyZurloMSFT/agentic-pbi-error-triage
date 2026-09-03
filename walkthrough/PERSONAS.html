@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Persona scenario: Power BI refresh failure</title>
+<link rel="stylesheet" href="walkthrough.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="brand">SME BI Triage <span>&middot;</span> Foundry</span>
+  <span class="docref">Technical walkthrough <b>WALKTHROUGH.html</b></span>
+</nav>
+
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">BI Request Triage &amp; Resolution &middot; SM Energy demo</div>
+  <h1>Persona scenario:<br>Power BI refresh failure</h1>
+  <p class="sub">
+    The same runs as the technical walkthrough, described from the user's side. Screenshots come
+    from live runs against the Foundry tenant and the demo Teams channel.
+  </p>
+</header>
+
+<nav class="toc">
+  <a href="#cast">People</a>
+  <a href="#timeline">Timeline</a>
+  <a href="#resolved">1 &middot; Resolved automatically</a>
+  <a href="#flagged">2 &middot; Data quality flagged</a>
+  <a href="#suppressed">2b &middot; Duplicate alert suppressed</a>
+  <a href="#budget">3 &middot; Budget enforced</a>
+  <a href="#allowlist">4 &middot; Off-allowlist refused</a>
+  <a href="#difference">Before and after</a>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="cast">
+  <h2><span class="num">A</span> People</h2>
+
+  <table class="matrix">
+    <thead><tr><th>Who</th><th>Cares about</th><th>Current experience (before)</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>Priya</b><br><span class="muted">Finance analyst</span></td>
+        <td>The report showing today's revenue.</td>
+        <td>Opens Daily Orders. Yesterday's numbers. No indication anything is wrong.</td>
+      </tr>
+      <tr>
+        <td><b>Sam</b><br><span class="muted">BI platform engineer, on call</span></td>
+        <td>Being paged only for failures that actually need him.</td>
+        <td>An alerts mailbox with 40 identical refresh emails from a bad night. Ignored.</td>
+      </tr>
+      <tr>
+        <td><b>Rae</b><br><span class="muted">Data steward</span></td>
+        <td>Knowing when the data is wrong, not that a refresh failed.</td>
+        <td>Only learns about DQ issues when someone runs a manual audit.</td>
+      </tr>
+      <tr>
+        <td><b>The agent</b><br><span class="muted">Triage + DQ (Foundry)</span></td>
+        <td>Operating within its policy budget.</td>
+        <td>Reads the alert, checks the incident store, delegates DQ, takes at most one bounded action.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="note">
+    Priya, Sam and Rae are roles used for this document. The runs, Power BI calls, incident records
+    and identities are real. Only the three names are placeholders, so the document can be reused
+    without naming a customer's staff.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="timeline">
+  <h2><span class="num">B</span> Timeline</h2>
+
+  <table class="matrix">
+    <thead><tr><th>Time</th><th>Event</th><th>Who</th></tr></thead>
+    <tbody>
+      <tr><td><code>06:02</code></td><td>Scheduled refresh fails with a transient timeout on the semantic model.</td><td class="muted">&mdash;</td></tr>
+      <tr><td><code>06:03</code></td><td>Power BI emails <code>bi-triage-demo@…</code>.</td><td class="muted">&mdash;</td></tr>
+      <tr><td><code>06:04</code></td><td>func-sme's <code>poll_inbox</code> timer picks up the mail, invokes Triage.</td><td class="muted">poller</td></tr>
+      <tr><td><code>06:04</code></td><td>Triage: <code>incidents.check_or_open</code> — first occurrence.</td><td class="muted">agent</td></tr>
+      <tr><td><code>06:04</code></td><td>Triage delegates to DQ over A2A. DQ scans <code>source_orders</code>.</td><td class="muted">agent</td></tr>
+      <tr><td><code>06:05</code></td><td>DQ returns <code>clean</code>. Triage charges the policy ledger, then calls PBI REST refresh.</td><td class="muted">agent</td></tr>
+      <tr><td><code>06:05</code></td><td>Teams card posted. One notification, not forty.</td><td class="muted">agent</td></tr>
+      <tr><td><code>08:30</code></td><td>Opens the report. Data is current.</td><td><b>Priya</b></td></tr>
+      <tr><td><code>08:30</code></td><td>Reads one notification: report, error, action taken, outcome. Nothing to do.</td><td><b>Sam</b></td></tr>
+    </tbody>
+  </table>
+
+  <p>
+    Measured on the demo tenant: <b>~30 seconds</b> from the agent starting to the Teams card
+    landing. First response inside 15 seconds.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="resolved">
+  <h2><span class="num">1</span> Resolved automatically</h2>
+  <p class="lede">
+    A transient failure on <i>Daily Orders</i>. Data is sound, one retry is correct.
+  </p>
+
+
+  <p>
+    Priya opens the report at 08:30. The refresh completed at 06:05. Data is current. Sam sees one
+    Teams card with "resolved" and does nothing.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="flagged">
+  <h2><span class="num">2</span> Data quality flagged</h2>
+  <p class="lede">
+    DQ finds three rows sharing <code>order_id=O-1003</code>. Retrying won't help — the underlying
+    data is wrong. Rae needs to know; Priya's report needs a hold.
+  </p>
+
+
+  <p class="note ok">
+    <span class="label">Chose not to fix</span>
+    The agent could have taken a stab at deduping — but it doesn't. The flag row is a hand-off to
+    Rae, not a fix in disguise. That's what makes this trustworthy in production.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="suppressed">
+  <h2><span class="num">2b</span> Duplicate alert suppressed</h2>
+  <p class="lede">
+    Same failure fires again five minutes later. The agent recognizes it and doesn't kick off a
+    second refresh. Sam sees an occurrence counter, not a second card.
+  </p>
+
+
+  <p>
+    Sam has a rule: if he sees an occurrence counter above 3, he pages himself. Priya never notices —
+    the report was already fine.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="budget">
+  <h2><span class="num">3</span> Budget enforced</h2>
+  <p class="lede">
+    Under a legitimate transient failure the agent refreshes once, then is told (via a payload flag,
+    in the demo) that a second refresh might be needed. It asks the controller. The controller
+    refuses.
+  </p>
+
+
+  <p class="note">
+    <span class="label">Why this matters</span>
+    The customer is going to ask "what stops it running forty refreshes during an outage?" This is
+    the answer. Not wording in the prompt, but a SQL row that gets written before the action
+    executes.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="allowlist">
+  <h2><span class="num">4</span> Off-allowlist refused</h2>
+  <p class="lede">
+    The model proposes deleting the duplicate rows to "fix" the DQ finding. The controller has an
+    allowlist. Delete isn't on it.
+  </p>
+
+
+  <p class="note danger">
+    <span class="label">Fail-closed</span>
+    Even if the model hallucinates a plausible-sounding action, the Function App's allowlist is the
+    final gate. Refusal is <b>data</b>, not a crash — the agent gets it back, escalates via Teams,
+    and the run terminates cleanly with a legible ledger row.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section id="difference">
+  <h2><span class="num">C</span> Before and after</h2>
+
+  <table class="matrix">
+    <thead><tr><th>Before (no agent)</th><th>After (with the demo)</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Priya sees stale data. Nothing indicates a problem.</td>
+        <td>Priya opens the report at 08:30 with data current as of 06:05.</td>
+      </tr>
+      <tr>
+        <td>Sam has an alerts mailbox nobody reads. 40 identical emails after a bad night.</td>
+        <td>Sam gets <b>one</b> Teams card per <em>distinct</em> failure. Occurrence counter for repeats.</td>
+      </tr>
+      <tr>
+        <td>Rae learns about DQ issues through manual audits, days later.</td>
+        <td>Rae gets a card at 06:05 for every DQ finding, with the exact key and dup count.</td>
+      </tr>
+      <tr>
+        <td>No record of failed runs beyond raw application logs.</td>
+        <td><code>demo_events</code>, <code>incidents</code>, <code>policy_ledger</code> — every terminal outcome persisted, refusals included.</td>
+      </tr>
+      <tr>
+        <td>No way to bound what the agent can do without editing prompts.</td>
+        <td>Budget + allowlist in the controller. Editing the prompt cannot raise either.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<footer>
+  Companion doc: <a href="WALKTHROUGH.html">WALKTHROUGH.html</a> for the technical view.
+  Live tenant: <code>ai-foundry-sme / proj-sme</code>. Runs verified 2026-08-31.
+</footer>
+
+</div>
+</body>
+</html>

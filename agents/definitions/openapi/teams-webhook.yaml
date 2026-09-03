@@ -1,0 +1,85 @@
+openapi: "3.0.3"
+info:
+  title: Teams channel webhook (Power Automate Workflows)
+  version: "1.1.0"
+  description: >
+    Anonymous inbound webhook created from the "Send webhook alerts to a
+    channel" Workflows template in Microsoft Teams. The signed URL identifies
+    the target team + channel, so callers only send the message payload.
+    Replaces the previous cross-tenant Graph SP path — no client secret to
+    rotate, no Foundry project connection required.
+
+    IMPORTANT: this webhook ONLY renders payloads shaped as an Adaptive Card
+    envelope. Plain `{"text": "..."}` is accepted (HTTP 202) but silently
+    dropped — nothing appears in the channel. Always send the full envelope
+    shape defined by the `AdaptiveCardEnvelope` schema below.
+servers:
+  # `agents/deploy-agents.ps1` replaces {{TEAMS_WEBHOOK_ORIGIN}} and
+  # {{TEAMS_WEBHOOK_PATH}} with values parsed from $env:TEAMS_WEBHOOK_URL
+  # at deploy time. Nothing sensitive is committed to source.
+  - url: "{{TEAMS_WEBHOOK_ORIGIN}}"
+paths:
+  # Full query string baked into the path so the model can't accidentally
+  # omit api-version / sp / sv / sig. The signature IS the auth for this
+  # webhook, so keeping it inline (post-template) keeps the tool call
+  # idempotent.
+  "{{TEAMS_WEBHOOK_PATH}}":
+    post:
+      operationId: post_teams_message
+      summary: Post an Adaptive Card message to the pre-wired Teams channel.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdaptiveCardEnvelope"
+      responses:
+        "202":
+          description: Accepted; Power Automate will render the card.
+components:
+  schemas:
+    AdaptiveCardEnvelope:
+      type: object
+      required: [type, attachments]
+      properties:
+        type:
+          type: string
+          enum: [message]
+          default: message
+        attachments:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [contentType, content]
+            properties:
+              contentType:
+                type: string
+                enum: [application/vnd.microsoft.card.adaptive]
+                default: application/vnd.microsoft.card.adaptive
+              content:
+                $ref: "#/components/schemas/AdaptiveCard"
+    AdaptiveCard:
+      type: object
+      required: [type, "$schema", version, body]
+      properties:
+        type:
+          type: string
+          enum: [AdaptiveCard]
+          default: AdaptiveCard
+        "$schema":
+          type: string
+          default: "http://adaptivecards.io/schemas/adaptive-card.json"
+        version:
+          type: string
+          default: "1.4"
+        body:
+          type: array
+          description: >
+            Ordered list of Adaptive Card elements. Prefer a bold TextBlock
+            header (report + scenario), a FactSet with error/action/outcome/
+            timestamp, and — for the duplicates_found path — a bold TextBlock
+            with the exact phrase "Table <table> contains N duplicates on
+            key <key>" (satisfies PRD §2.1).
+          items:
+            type: object

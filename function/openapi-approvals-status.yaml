@@ -1,0 +1,47 @@
+openapi: "3.0.3"
+info:
+  title: SME Approval Status
+  version: "1.0.0"
+  description: >
+    Poll an approval by fingerprint. Triage calls this in a bounded loop
+    (typically <= 12 times, 5s apart, so a 60s wait) after issuing an
+    approval. Returned decisions:
+      * pending  — no action yet; keep polling until the TTL is up.
+      * granted  — human said yes; dispatch the action ONCE and only once.
+      * denied   — human said no; escalate to Teams with terminal outcome.
+      * expired  — TTL passed with no answer; treat as denied.
+      * unknown  — no such fingerprint; treat as denied.
+    A 'granted' or 'denied' response marks the row 'used' on the server
+    side so a later poll cannot re-consume the same approval.
+servers:
+  - url: https://func-sme.azurewebsites.net
+paths:
+  /api/approvals/status:
+    post:
+      operationId: check_approval
+      summary: Poll for an approval decision.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fingerprint]
+              properties:
+                fingerprint: { type: string }
+      responses:
+        "200":
+          description: Current decision.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  decision:
+                    type: string
+                    enum: [pending, granted, denied, expired, unknown]
+                  actor:       { type: string, nullable: true }
+                  decided_at:  { type: string, format: date-time, nullable: true }
+                  expires_at:  { type: string, format: date-time, nullable: true }
+        "404":
+          description: Unknown fingerprint.

@@ -1,0 +1,45 @@
+openapi: "3.0.3"
+info:
+  title: Power BI Refresh API
+  version: "1.0.0"
+  description: >
+    Minimal slice of the Power BI REST API exposing only Datasets - Refresh
+    Dataset. Bound to the Triage Agent as an OpenAPI tool with managed-identity
+    auth (audience = https://analysis.windows.net/powerbi/api). The Foundry
+    project MI must be a workspace Member/Contributor on the target workspace.
+servers:
+  - url: https://api.powerbi.com
+paths:
+  /v1.0/myorg/groups/{workspaceId}/datasets/{datasetId}/refreshes:
+    post:
+      operationId: refresh_pbi_dataset
+      summary: Trigger a Power BI dataset refresh.
+      parameters:
+        - in: path
+          name: workspaceId
+          required: true
+          schema: { type: string, format: uuid }
+          description: Power BI workspace (group) GUID.
+        - in: path
+          name: datasetId
+          required: true
+          schema: { type: string, format: uuid }
+          description: Power BI dataset GUID.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notifyOption:
+                  type: string
+                  enum: [MailOnCompletion, MailOnFailure, NoNotification]
+                  default: NoNotification
+      responses:
+        "202":
+          description: Refresh accepted; check RequestId header for tracking.
+        "401":
+          description: MI not authorized on the workspace.
+        "404":
+          description: Workspace or dataset not found.

@@ -1,0 +1,57 @@
+openapi: "3.0.3"
+info:
+  title: SME Policy Charge API
+  version: "1.0.0"
+  description: >
+    Per-run remediation ledger. Triage MUST call this before every remediation
+    (refresh_pbi_dataset or write_dq_flag). The ledger enforces "one remediation
+    per run" across every agent in the run. On deny, the agent does NOT take
+    the action — it escalates via Teams.
+servers:
+  - url: https://func-sme.azurewebsites.net
+    description: Function App hostname.
+paths:
+  /api/policy/charge:
+    post:
+      operationId: policy_charge
+      summary: Charge the remediation ledger for a proposed action.
+      description: >
+        Returns allowed=true only if the run has budget remaining. Every call
+        (allow or deny) is persisted as a policy_ledger row for observability.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChargeRequest"
+      responses:
+        "200":
+          description: Charge decision.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChargeResult"
+        "400": { description: "Missing run_id or action." }
+        "500": { description: "SQL failure." }
+components:
+  schemas:
+    ChargeRequest:
+      type: object
+      required: [run_id, action]
+      properties:
+        run_id: { type: string }
+        action:
+          type: string
+          enum: [refresh_pbi_dataset, write_dq_flag]
+        budget_override:
+          type: integer
+          description: Demo escape hatch. Defaults to 1.
+    ChargeResult:
+      type: object
+      required: [allowed, remaining, budget, ledger_id]
+      properties:
+        allowed:     { type: boolean }
+        remaining:   { type: integer }
+        budget:      { type: integer }
+        deny_reason: { type: string, nullable: true }
+        ledger_id:   { type: integer }

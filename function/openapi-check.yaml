@@ -1,0 +1,73 @@
+openapi: "3.0.3"
+info:
+  title: SME DQ Check API
+  version: "1.0.0"
+  description: >
+    Duplicate scan endpoint bound to the Foundry DQ Agent as an OpenAPI tool.
+    Foundry calls this with managed-identity auth: the project MI presents a
+    bearer token whose `aud` matches this Function App's App Registration.
+servers:
+  - url: https://func-sme.azurewebsites.net
+    description: Function App hostname.
+paths:
+  /api/dq/check:
+    post:
+      operationId: check_duplicates
+      summary: Scan a source table for duplicate key values.
+      description: >
+        Groups by `key_column` and returns the key values whose count > 1.
+        Verdict is 'duplicates_found' if any exist, 'clean' otherwise.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DqCheckRequest"
+      responses:
+        "200":
+          description: Verdict.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DqCheckResult"
+        "400":
+          description: Invalid identifier in table_name or key_column.
+        "500":
+          description: SQL failure.
+components:
+  schemas:
+    DqCheckRequest:
+      type: object
+      required: [table_name, key_column]
+      properties:
+        table_name:
+          type: string
+          example: "dbo.source_orders"
+          description: Fully qualified table (schema.table). Alphanumeric + . _ only.
+        key_column:
+          type: string
+          example: "order_id"
+          description: Column that should be unique.
+    DqCheckResult:
+      type: object
+      required: [verdict, table, key_column, duplicate_count, duplicates, checked_at]
+      properties:
+        verdict:
+          type: string
+          enum: [clean, duplicates_found, error]
+        table: { type: string }
+        key_column: { type: string }
+        duplicate_count: { type: integer }
+        duplicates:
+          type: array
+          items:
+            type: object
+            properties:
+              key_value: { type: string }
+              dup_count: { type: integer }
+        checked_at:
+          type: string
+          format: date-time
+        error:
+          type: string
+          description: Present only when verdict=error.

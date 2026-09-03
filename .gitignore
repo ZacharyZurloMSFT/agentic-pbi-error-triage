@@ -1,0 +1,43 @@
+# ---- Secrets / local config ---------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# azd environment state (contains subscription id, tenant id, resource ids)
+.azure/
+!.azure/.gitkeep
+
+# Azure Functions local settings (contains connection strings)
+local.settings.json
+
+# Cockpit local overrides
+cockpit/.env
+
+# ---- Python -------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.python_packages/
+
+# ---- Node / editor / OS -------------------------------------------------
+node_modules/
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ---- Build / packaging --------------------------------------------------
+dist/
+build/
+*.zip
+
+# ---- Azure Functions runtime scratch ------------------------------------
+bin/
+obj/
+__azurite_db*__.json
+__blobstorage__
+__queuestorage__

@@ -1,0 +1,69 @@
+openapi: "3.0.3"
+info:
+  title: SME DQ Flag API
+  version: "1.0.0"
+  description: >
+    Writes a duplicate-flag row into dbo.dq_flags. Called by the Triage Agent
+    when the DQ Agent's verdict is 'duplicates_found' (Scenario 2 payoff).
+    Managed-identity auth: Foundry project MI presents a bearer token whose
+    `aud` matches this Function App's App Registration.
+servers:
+  - url: https://func-sme.azurewebsites.net
+    description: Function App hostname.
+paths:
+  /api/dq/flag:
+    post:
+      operationId: write_dq_flag
+      summary: Insert one flag row into dbo.dq_flags.
+      description: >
+        Call once per duplicate key value found by check_duplicates. Returns
+        the newly-assigned flag_id and the server-side detected_at timestamp.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DqFlagRequest"
+      responses:
+        "200":
+          description: Row inserted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DqFlagResult"
+        "400":
+          description: Invalid or missing fields.
+        "500":
+          description: SQL failure.
+components:
+  schemas:
+    DqFlagRequest:
+      type: object
+      required: [table_name, key_columns, key_value, dup_count]
+      properties:
+        table_name:
+          type: string
+          example: "dbo.source_orders"
+        key_columns:
+          type: string
+          example: "order_id"
+          description: Comma-separated column list forming the duplicated key.
+        key_value:
+          type: string
+          example: "O-1003"
+        dup_count:
+          type: integer
+          example: 3
+        source_run_id:
+          type: string
+          description: Optional Foundry run id for traceability.
+    DqFlagResult:
+      type: object
+      required: [flag_id, detected_at, table_name, key_value, dup_count]
+      properties:
+        flag_id: { type: integer }
+        detected_at: { type: string, format: date-time }
+        table_name: { type: string }
+        key_columns: { type: string }
+        key_value: { type: string }
+        dup_count: { type: integer }

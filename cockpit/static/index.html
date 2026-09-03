@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BI Triage Demo Cockpit</title>
+    <link rel="stylesheet" href="/static/cockpit.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="title">
+            <span class="brand">BI Triage</span>
+            <span class="sep">·</span>
+            <span>Foundry</span>
+        </div>
+        <div class="right">
+            <div class="countdown" id="countdown">
+                <div class="countdown-label">Next mailbox poll</div>
+                <div class="countdown-value" id="countdown-value">--<span class="unit">s</span></div>
+                <div class="countdown-note" id="countdown-note">waiting for heartbeat…</div>
+            </div>
+            <span id="clock" class="clock">--:--:--</span>
+            <button id="reset-btn" class="btn" title="Truncate demo_events + dq_flags + incidents + policy_ledger. Preserves the poll heartbeat.">Reset</button>
+        </div>
+    </header>
+
+    <main class="grid">
+        <!-- LEFT: EMAIL TEMPLATES -->
+        <section class="panel" id="tile-emails">
+            <h2>Trigger by email <span class="tile-hint">to bi-triage-demo@…</span></h2>
+            <div class="email-help">
+                Compose in your own mail client, paste subject &amp; body, send.
+                The poller picks it up on the next tick.
+            </div>
+            <div id="email-cards" class="email-cards"></div>
+        </section>
+
+        <!-- CENTER: ARCHITECTURE CANVAS -->
+        <section class="panel" id="tile-canvas">
+            <h2>Live flow <span class="tile-hint" id="canvas-hint">idle</span></h2>
+            <div id="canvas-container" class="canvas-wrap"></div>
+            <div class="legend">
+                <span class="legend-item"><span class="dot idle"></span>idle</span>
+                <span class="legend-item"><span class="dot active"></span>active</span>
+                <span class="legend-item"><span class="dot ok"></span>ok</span>
+                <span class="legend-item"><span class="dot error"></span>error</span>
+                <span class="legend-item"><span class="dot refused"></span>refused</span>
+            </div>
+        </section>
+
+        <!-- RIGHT: EVENT FEED -->
+        <section class="panel" id="tile-feed">
+            <h2>Event feed <span class="tile-hint" id="feed-hint">last 3 runs</span></h2>
+            <ol id="feed-list" class="feed"></ol>
+        </section>
+
+        <!-- BOTTOM: STATE TABLES -->
+        <section class="panel wide" id="tile-state">
+            <h2>SQL state <span class="tile-hint">sql-db-sme</span></h2>
+            <div class="state-grid">
+                <div class="state-block">
+                    <div class="subhead">
+                        <span>dbo.source_orders</span>
+                        <span class="badge" id="orders-count">0</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="orders-table">
+                            <thead><tr><th>line</th><th>order_id</th><th>cust</th><th>date</th><th>amount</th><th>region</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="state-block">
+                    <div class="subhead">
+                        <span>dbo.dq_flags</span>
+                        <span class="badge badge-flag" id="flags-count">0</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="flags-table">
+                            <thead><tr><th>id</th><th>key</th><th>value</th><th>dup</th><th>at</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="state-block">
+                    <div class="subhead">
+                        <span>dbo.incidents</span>
+                        <span class="badge badge-info" id="incidents-count">0</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="incidents-table">
+                            <thead><tr><th>sig</th><th>report</th><th>#</th><th>outcome</th><th>last</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="state-block">
+                    <div class="subhead">
+                        <span>dbo.policy_ledger</span>
+                        <span class="badge badge-info" id="policy-count">0</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="policy-table">
+                            <thead><tr><th>id</th><th>action</th><th>decision</th><th>reason</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SAFETY-RAIL TILES (four new: approvals, inbox_audit, prompt_versions, playbooks) -->
+        <section class="panel wide" id="tile-safety">
+            <h2>Safety rails <span class="tile-hint">approvals · inbox audit · prompts · playbooks</span></h2>
+            <div class="state-grid">
+
+                <div class="state-block" id="approvals">
+                    <div class="subhead">
+                        <span>dbo.approvals <span class="mini-hint">S5/S6 human-in-the-loop</span></span>
+                        <span class="badge badge-info" id="approvals-count">0</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="approvals-table">
+                            <thead><tr><th>fp</th><th>run</th><th>action</th><th>decision</th><th>actor</th><th>expires</th><th></th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="state-block">
+                    <div class="subhead">
+                        <span>dbo.inbox_audit <span class="mini-hint">fail-closed poller</span></span>
+                        <span class="badge badge-warn" id="inbox-audit-count">0</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="inbox-audit-table">
+                            <thead><tr><th>id</th><th>subject</th><th>sender</th><th>reason</th><th>at</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="state-block">
+                    <div class="subhead">
+                        <span>dbo.prompt_versions <span class="mini-hint">deployed prompts</span></span>
+                        <span class="badge badge-info" id="prompt-versions-count">0</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="prompt-versions-table">
+                            <thead><tr><th>agent</th><th>hash</th><th>len</th><th>at</th><th>by</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="state-block">
+                    <div class="subhead">
+                        <span>Playbook lookup <span class="mini-hint">retrieved knowledge</span></span>
+                        <span class="badge badge-info" id="playbook-count">0 hits</span>
+                    </div>
+                    <div class="playbook-input">
+                        <input type="text" id="playbook-input" placeholder='paste an error string, e.g. "credentials expired AADSTS70008"'>
+                        <button id="playbook-btn" class="btn small">Lookup</button>
+                    </div>
+                    <div class="table-wrap">
+                        <table id="playbook-table">
+                            <thead><tr><th>id</th><th>retry?</th><th>summary</th></tr></thead>
+                            <tbody><tr><td colspan="3" class="muted">Paste an error above to see matching playbooks.</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <span id="status" class="status ok">connected</span>
+        <span class="small" id="foot-info"></span>
+    </footer>
+
+    <script src="/static/cockpit.js"></script>
+</body>
+</html>

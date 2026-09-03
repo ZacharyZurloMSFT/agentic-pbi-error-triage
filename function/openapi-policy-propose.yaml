@@ -1,0 +1,62 @@
+openapi: "3.0.3"
+info:
+  title: SME Policy Propose Action API
+  version: "1.0.0"
+  description: >
+    Allowlist gate for arbitrary proposed actions. The allowlist lives in the
+    controller, not the prompt. Anything off-list is refused with a legible
+    reason, and the refusal is written to policy_ledger so the demo can point
+    at it. The agent then escalates via Teams.
+servers:
+  - url: https://func-sme.azurewebsites.net
+    description: Function App hostname.
+paths:
+  /api/policy/propose_action:
+    post:
+      operationId: policy_propose_action
+      summary: Gate a proposed action against the tool allowlist.
+      description: >
+        Returns status="dispatched" if the action is on the allowlist,
+        status="refused" otherwise. Dispatched actions still require a
+        separate policy_charge call before execution — this endpoint only
+        validates the action name.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposeRequest"
+      responses:
+        "200":
+          description: Dispatch decision.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProposeResult"
+        "400": { description: "Missing run_id or action." }
+        "500": { description: "SQL failure." }
+components:
+  schemas:
+    ProposeRequest:
+      type: object
+      required: [run_id, action]
+      properties:
+        run_id: { type: string }
+        action: { type: string, description: "Proposed action name." }
+        args:
+          type: object
+          additionalProperties: true
+          description: Opaque args, echoed for logging only.
+    ProposeResult:
+      type: object
+      required: [status, action, allowlist, ledger_id]
+      properties:
+        status:
+          type: string
+          enum: [dispatched, refused]
+        action:      { type: string }
+        deny_reason: { type: string, nullable: true }
+        allowlist:
+          type: array
+          items: { type: string }
+        ledger_id:   { type: integer }

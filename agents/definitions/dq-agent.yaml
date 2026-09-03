@@ -1,0 +1,92 @@
+# DQ Agent — declarative Foundry prompt-agent definition.
+#
+# The deploy-agents.ps1 script reads this file, inlines the referenced
+# OpenAPI spec into `tools[].openapi.spec`, sets the audience from azd env
+# vars, then PATCHes the agent via the Foundry Agents REST API (equivalent
+# to the MCP `agent_update` call).
+#
+# This is a portable share-out asset — the entire agent definition lives here
+# alongside the tool spec it depends on. No container images, no Dockerfile.
+
+name: dq-agent
+kind: prompt
+model: gpt-4o
+temperature: 0
+description: >
+  Data Quality Agent. Inspects a source table for duplicates on a declared
+  key column, writes a flag row per duplicate into dbo.dq_flags when found,
+  then returns the verdict. Called by the Triage Agent through the
+  a2a_preview tool binding.
+instructions: |
+  You are the Data Quality (DQ) Agent for the SM Energy BI Triage demo.
+
+  You are called by the Triage Agent. Your job:
+    0. Call `get_prompt_hash` ONCE with `{agent:"dq-agent"}` and remember
+       the returned `prompt_hash`. Include it in every subsequent
+       `log_event` call in this run.
+    1. Call `check_duplicates` ONCE with the caller's `table_name` and
+       `key_column` and read the tool's JSON result.
+    2. If the verdict is "duplicates_found":
+         For EACH item in `duplicates`, call `write_dq_flag` once with:
+           table_name  = <table>
+           key_columns = <key_column>
+           key_value   = <item.key_value>
+           dup_count   = <item.dup_count>
+       Do this before returning your final message so Triage sees the flag
+       row(s) already persisted.
+    3. Return the ORIGINAL check_duplicates JSON as your final message
+       (the dq_verdict contract below). Do NOT paraphrase.
+
+  Rules:
+  - **Deterministic evidence outranks model prose.** The `duplicate_count`
+    field in the JSON is authoritative. If your natural-language summary
+    disagrees with the count, the count wins — log
+    `stage="model_contradicted", status="info"` and return the numeric
+    verdict unchanged. Never contradict a scan in prose. (Ported from
+    the reference repo's `test_contradicted_denial_discards_the_models_prose`
+    — invariant #6.)
+  - Never guess the key. If the caller did not provide `key_column`, respond
+    with a JSON object where verdict is "error".
+  - Do not read or write any table other than the one you were asked about.
+  - Do not refresh Power BI. That is Triage's job.
+  - The final message MUST be valid JSON matching the dq_verdict contract:
+      {
+        "verdict":         "clean" | "duplicates_found" | "error",
+        "table":           "...",
+        "key_column":      "...",
+        "duplicate_count": <int>,
+        "duplicates":      [ { "key_value": "...", "dup_count": <int> }, ... ],
+        "checked_at":      "<ISO 8601 UTC>"
+      }
+tools:
+  - type: openapi
+    name: check_duplicates
+    specPath: ../../function/openapi-check.yaml
+    auth:
+      type: managed_identity
+      audienceEnv: FUNCTION_APP_AUDIENCE
+
+  # Own the flag write (per PRD §3 — "Data Quality Agent... writes a record
+  # to a separate data quality flag table"). Triage no longer holds this tool.
+  - type: openapi
+    name: write_dq_flag
+    specPath: ../../function/openapi-flag.yaml
+    auth:
+      type: managed_identity
+      audienceEnv: FUNCTION_APP_AUDIENCE
+
+  # Prompt-version awareness — stamp every event with the current hash.
+  - type: openapi
+    name: get_prompt_hash
+    specPath: ../../function/openapi-current-prompt-hash.yaml
+    auth:
+      type: managed_identity
+      audienceEnv: FUNCTION_APP_AUDIENCE
+
+  # Log DQ-side events so the cockpit shows both agents' contributions.
+  - type: openapi
+    name: log_event
+    specPath: ../../function/openapi-log-event.yaml
+    auth:
+      type: managed_identity
+      audienceEnv: FUNCTION_APP_AUDIENCE

@@ -1,0 +1,65 @@
+openapi: "3.0.3"
+info:
+  title: SME Incident Close (outcome validation)
+  version: "1.0.0"
+  description: >
+    Reconcile the agent's CLAIMED terminal outcome against actual evidence
+    in demo_events, dq_flags, and incidents. The controller — not the
+    agent — decides what actually happened. If the claim is unsupported,
+    the outcome is downgraded to needs_human.
+servers:
+  - url: https://func-sme.azurewebsites.net
+paths:
+  /api/incidents/close:
+    post:
+      operationId: close_incident
+      summary: Reconcile claimed outcome, return final_outcome.
+      description: >
+        Triage MUST call this immediately before posting to Teams and MUST
+        use `final_outcome` (not `claimed_outcome`) in the card body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloseRequest"
+      responses:
+        "200":
+          description: Reconciled result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CloseResult"
+        "400":
+          description: Missing required field.
+        "500":
+          description: SQL failure.
+components:
+  schemas:
+    CloseRequest:
+      type: object
+      required: [run_id, claimed_outcome]
+      properties:
+        run_id:          { type: string }
+        signature:       { type: string, description: "Incident signature from check_or_open." }
+        claimed_outcome:
+          type: string
+          enum:
+            - resolved
+            - flagged_data_quality
+            - duplicate_suppressed
+            - escalated
+            - action_refused
+            - policy_denied
+            - approval_denied
+            - needs_human
+    CloseResult:
+      type: object
+      properties:
+        final_outcome:
+          type: string
+          description: The outcome the Teams card should reflect. May differ from claimed_outcome.
+        downgraded: { type: boolean }
+        reason:     { type: string, nullable: true }
+        claimed:    { type: string }
+        signature:  { type: string, nullable: true }

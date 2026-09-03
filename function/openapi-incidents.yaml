@@ -1,0 +1,61 @@
+openapi: "3.0.3"
+info:
+  title: SME Incidents API
+  version: "1.0.0"
+  description: >
+    Incident dedup endpoint. Called by the Triage Agent as the FIRST step of
+    every run so a second alert with the same signature is suppressed instead
+    of triggering a second remediation. Signature is computed server-side.
+servers:
+  - url: https://func-sme.azurewebsites.net
+    description: Function App hostname.
+paths:
+  /api/incidents/check_or_open:
+    post:
+      operationId: check_or_open_incident
+      summary: Open a new incident or bump the occurrence counter on an existing one.
+      description: >
+        Server computes a 16-char SHA-256 signature over the normalized
+        {report, source_table, key_column, error_class}. If unseen, opens a
+        new incident (action="open"). If seen, increments occurrence_count
+        and returns action="suppress" — the caller must NOT take further action.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncidentRequest"
+      responses:
+        "200":
+          description: Incident state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncidentResult"
+        "500":
+          description: SQL failure.
+components:
+  schemas:
+    IncidentRequest:
+      type: object
+      required: [report, source_table, key_column, error, run_id]
+      properties:
+        report:       { type: string, example: "Daily Orders" }
+        source_table: { type: string, example: "dbo.source_orders" }
+        key_column:   { type: string, example: "line_id" }
+        error:        { type: string, example: "Refresh failed (simulated transient error)" }
+        run_id:       { type: string, description: "Foundry run id / triage-generated GUID." }
+    IncidentResult:
+      type: object
+      required: [signature, action, occurrence_count, first_seen_at, last_seen_at]
+      properties:
+        signature:
+          type: string
+          description: 16-char SHA-256 hex prefix.
+        action:
+          type: string
+          enum: [open, suppress]
+        occurrence_count: { type: integer }
+        first_seen_at:    { type: string, format: date-time }
+        last_seen_at:     { type: string, format: date-time }
+        error_class:      { type: string }

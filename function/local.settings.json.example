@@ -1,0 +1,13 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsFeatureFlags": "EnableWorkerIndexing",
+    "SQL_SERVER": "sql-server-sme.database.windows.net",
+    "SQL_DATABASE": "sql-db-sme",
+    "MAILBOX_UPN": "bi-triage-demo@yourtenant.onmicrosoft.com",
+    "TRIAGE_ENDPOINT": "https://<foundry-account>.services.ai.azure.com/api/projects/<project>/agents/triage-agent/endpoint/protocols/openai/responses?api-version=v1",
+    "DEMO_SUBJECT_PREFIX": "[BI-DEMO]"
+  }
+}
