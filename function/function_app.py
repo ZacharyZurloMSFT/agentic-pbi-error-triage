@@ -1237,6 +1237,22 @@ def _invoke_triage(client: httpx.Client, payload: dict) -> httpx.Response:
     body = {
         "input": [{"role": "user", "content": user_content}],
         "store": False,
+        # A full S1/S2 run is ~14 tool calls before the terminal
+        # close_incident+Teams pair; S3/S5/S6 add a few more. The Foundry
+        # default cap is low enough to strand runs mid-workflow (the
+        # symptom is a 200 response after the last log_event with no
+        # policy_charge/refresh/close_incident that follows). Raise the
+        # ceiling so every scenario has headroom.
+        #
+        # max_output_tokens is bumped to gpt-4o's 16k ceiling because the
+        # HITL approval poll loop (S5/S6) burns tokens fast: the model has
+        # no sleep tool, so it fires check_approval every ~1-2s and each
+        # iteration produces reasoning text. At 8k the response truncates
+        # mid-loop and the run silently stops after the user approves.
+        # HITL (S5/S6) polls `check_approval` up to 40 times, plus ~14
+        # pre-approval calls and ~5 post-approval calls = ~60. Cap at 100.
+        "max_tool_calls":    100,
+        "max_output_tokens": 16000,
     }
     return client.post(
         TRIAGE_ENDPOINT,

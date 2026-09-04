@@ -36,11 +36,32 @@ logging.basicConfig(
 )
 log = logging.getLogger("cockpit")
 
-# Silence azure-identity's per-request chatter — it's very noisy at INFO
-# level (one 'DefaultAzureCredential acquired a token' line per call) and
-# our own cache means we won't hit it more than once per hour anyway.
+# --- Selective noise reduction --------------------------------------------
+# Goal: still show real activity (page loads, unexpected paths, errors), but
+# drop the per-tick polling chatter that makes it impossible to spot a real
+# event in the terminal. Two sources are filtered:
+#
+#   1. azure-identity / azure-core / httpcore — token cache noise, always off.
+#   2. httpx outbound to /api/demo/* and uvicorn.access on /api/* — those are
+#      the repeat-every-2s polls from the browser. Everything else still logs
+#      at INFO.
+
 logging.getLogger("azure.identity").setLevel(logging.WARNING)
 logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
+class _DropPollingPaths(logging.Filter):
+    """Drop log records whose message references cockpit-poll routes."""
+    _NOISE = ("/api/demo/", "/api/heartbeat", "/api/data", "/api/events",
+              "/api/approvals", "/api/policy", "/api/flags", "/api/rows",
+              "/api/incidents", "/api/inbox_audit", "/api/prompt_versions",
+              "/api/config")
+    def filter(self, record: logging.LogRecord) -> bool:  # noqa: D401
+        msg = record.getMessage()
+        return not any(p in msg for p in self._NOISE)
+
+for name in ("httpx", "uvicorn.access"):
+    logging.getLogger(name).addFilter(_DropPollingPaths())
 
 # --------------------------- Config -------------------------------------
 

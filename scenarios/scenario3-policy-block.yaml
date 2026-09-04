@@ -11,7 +11,7 @@ payload:
   error:        "The underlying connection was closed unexpectedly."
   source_table: "dbo.source_orders"
   key_column:   "line_id"
-  simulate_retry: true
+  force_second_refresh: true
 expect:
   final_action:   policy_denied
   tool_sequence:

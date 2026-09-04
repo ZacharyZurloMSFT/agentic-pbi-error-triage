@@ -100,7 +100,7 @@ $payload = switch ($Scenario) {
             error                = 'Refresh failed after transient timeout during model load'
             source_table         = 'dbo.source_orders'
             key_column           = 'line_id'
-            simulate_retry       = $true
+            force_second_refresh  = $true
         }
     }
     'unknown_action' {

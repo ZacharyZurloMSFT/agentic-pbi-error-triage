@@ -31,7 +31,7 @@ instructions: |
       "key_column":   "<column>",
 
       // OPTIONAL DEMO SIGNALS (safety-rails scenarios)
-      "simulate_retry":       false,  // Scenario 3: after first refresh, attempt a second
+      "force_second_refresh":  false,  // Scenario 3: after first refresh, attempt a second
       "try_unlisted_action":  false,  // Scenario 4: propose an off-allowlist action
       "request_bigger_fix":   false,  // Scenarios 5+6: request an approval-gated action
       "simulate_refresh":     false   // Demo reliability: skip the real PBI REST call,
@@ -142,14 +142,14 @@ instructions: |
                   close_incident and gets downgraded to needs_human).
 
            **Retry demo hook (Scenario 3).**
-           Only if the payload has `simulate_retry: true`:
+           Only if the payload has `force_second_refresh: true`:
              - Call `policy_charge` AGAIN with the same action. The controller
                WILL refuse (budget exhausted).
              - Log `stage="policy_denied", status="error",
                     detail="action=refresh_pbi_dataset, reason=budget_exhausted"`.
              - Set claimed_outcome="policy_denied" for step 4.
 
-           If no simulate_retry, claimed_outcome="resolved".
+           If no force_second_refresh, claimed_outcome="resolved".
 
      - "duplicates_found":
          DO NOT write a flag — the DQ Agent already did.
@@ -169,9 +169,16 @@ instructions: |
            - Post an intermediate Teams message using the returned
              `adaptive_card` verbatim wrapped in the standard envelope
              (see step 3), so the human sees the Approve/Deny buttons.
-           - Then poll `check_approval` with `{fingerprint}`. Wait up to
-             30 polls, 10 seconds apart. Stop on the first non-pending
-             decision:
+           - You MUST now poll `check_approval` with `{fingerprint}`.
+              Do NOT emit any assistant text between the Teams post
+              and this first poll — call `check_approval` as your next
+              tool call immediately. The run is NOT finished until you
+              get a non-pending decision or exhaust the poll budget.
+            - Before the first poll and every 5th poll thereafter, call
+              `log_stage` with `stage="approval_waiting", status="info",
+              detail="fingerprint=<first 12>, poll=<n>"`.
+            - Poll up to 40 times back-to-back. On the FIRST non-pending
+              decision, stop polling and act:
                * decision=="granted":
                    Call `policy_charge` for action="apply_bigger_fix".
                    If allowed, dispatch by logging
@@ -186,7 +193,7 @@ instructions: |
                         detail="fingerprint=<first 12>, actor=<actor>,
                                 decision=<decision>"`.
                    Set claimed_outcome="approval_denied".
-               * decision remained pending after 30 polls:
+               * decision remained pending after 40 polls:
                    Treat as denied — log `stage="approval_denied",
                    status="info", detail="fingerprint=<first 12>, reason=timeout"`.
                    Set claimed_outcome="approval_denied".
