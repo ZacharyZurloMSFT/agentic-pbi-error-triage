@@ -1,6 +1,6 @@
 # Walkthrough
 
-Two self-contained HTML pages describing the SME BI Triage demo, plus their shared stylesheet
+Two self-contained HTML pages describing the BI Triage demo, plus their shared stylesheet
 and a `shots/` folder for screenshots.
 
 | File | For |

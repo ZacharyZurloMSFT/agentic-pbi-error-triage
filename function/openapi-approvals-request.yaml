@@ -1,6 +1,6 @@
 openapi: "3.0.3"
 info:
-  title: SME Approval Request
+  title: BI Triage Approval Request
   version: "1.0.0"
   description: >
     Human-in-the-loop approval gate (Scenarios 5 + 6). Triage calls this
@@ -8,7 +8,7 @@ info:
     /api/approvals/status until the human decides or the TTL expires.
     Fail-closed: expired, missing, malformed, or reused approvals are all "no".
 servers:
-  - url: https://func-sme.azurewebsites.net
+  - url: https://func-triage.azurewebsites.net
 paths:
   /api/approvals/request:
     post:

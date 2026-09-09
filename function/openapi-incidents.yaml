@@ -1,13 +1,13 @@
 openapi: "3.0.3"
 info:
-  title: SME Incidents API
+  title: BI Triage Incidents API
   version: "1.0.0"
   description: >
     Incident dedup endpoint. Called by the Triage Agent as the FIRST step of
     every run so a second alert with the same signature is suppressed instead
     of triggering a second remediation. Signature is computed server-side.
 servers:
-  - url: https://func-sme.azurewebsites.net
+  - url: https://func-triage.azurewebsites.net
     description: Function App hostname.
 paths:
   /api/incidents/check_or_open:

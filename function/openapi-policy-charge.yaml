@@ -1,6 +1,6 @@
 openapi: "3.0.3"
 info:
-  title: SME Policy Charge API
+  title: BI Triage Policy Charge API
   version: "1.0.0"
   description: >
     Per-run remediation ledger. Triage MUST call this before every remediation
@@ -8,7 +8,7 @@ info:
     per run" across every agent in the run. On deny, the agent does NOT take
     the action — it escalates via Teams.
 servers:
-  - url: https://func-sme.azurewebsites.net
+  - url: https://func-triage.azurewebsites.net
     description: Function App hostname.
 paths:
   /api/policy/charge:

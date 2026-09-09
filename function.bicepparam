@@ -1,14 +1,14 @@
 using './function.bicep'
 
 param location = readEnvironmentVariable('AZURE_LOCATION', 'centralus')
-param functionAppName = readEnvironmentVariable('FUNCTION_APP_NAME', 'func-sme')
+param functionAppName = readEnvironmentVariable('FUNCTION_APP_NAME', 'func-triage')
 
 // Subnet resource ids emitted by network.bicep outputs.
 param functionSubnetId = readEnvironmentVariable('FUNCTION_SUBNET_ID', '')
 param privateEndpointSubnetId = readEnvironmentVariable('PE_SUBNET_ID', '')
 
-param sqlServerFqdn = readEnvironmentVariable('SQL_SERVER_FQDN', 'sql-server-sme.database.windows.net')
-param sqlDatabaseName = readEnvironmentVariable('SQL_DATABASE_NAME', 'sql-db-sme')
+param sqlServerFqdn = readEnvironmentVariable('SQL_SERVER_FQDN', 'sql-server-triage.database.windows.net')
+param sqlDatabaseName = readEnvironmentVariable('SQL_DATABASE_NAME', 'sql-db-triage')
 
 // Monitored mailbox — Function App poller reads unread [BI-DEMO] mail here.
 param mailboxUpn = readEnvironmentVariable('MAILBOX_UPN', '')
@@ -17,9 +17,12 @@ param mailboxUpn = readEnvironmentVariable('MAILBOX_UPN', '')
 // prints the responses endpoint on first run).
 param triageEndpoint = readEnvironmentVariable('TRIAGE_ENDPOINT', '')
 
-// Populate with the Foundry PROJECT MI object id (proj-sme, from
+// Populate with the Foundry PROJECT MI object id (proj-triage, from
 // foundry.bicep outputs.foundryProjectPrincipalId). Any caller whose Entra
 // token oid is in this list passes Easy Auth; everyone else gets 401.
 param foundryAllowedPrincipals = [
   readEnvironmentVariable('FOUNDRY_PROJECT_MI_OBJECT_ID', '')
+  readEnvironmentVariable('AAD_ADMIN_OBJECT_ID', '')
 ]
+
+param functionAppRegClientId = readEnvironmentVariable('FUNCTION_APP_REG_CLIENT_ID', '')

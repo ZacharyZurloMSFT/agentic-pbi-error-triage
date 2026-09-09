@@ -1,6 +1,6 @@
 openapi: "3.0.3"
 info:
-  title: SME Incident Close (outcome validation)
+  title: BI Triage Incident Close (outcome validation)
   version: "1.0.0"
   description: >
     Reconcile the agent's CLAIMED terminal outcome against actual evidence
@@ -8,7 +8,7 @@ info:
     agent — decides what actually happened. If the claim is unsupported,
     the outcome is downgraded to needs_human.
 servers:
-  - url: https://func-sme.azurewebsites.net
+  - url: https://func-triage.azurewebsites.net
 paths:
   /api/incidents/close:
     post:

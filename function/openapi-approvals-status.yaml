@@ -1,6 +1,6 @@
 openapi: "3.0.3"
 info:
-  title: SME Approval Status
+  title: BI Triage Approval Status
   version: "1.0.0"
   description: >
     Poll an approval by fingerprint. Triage calls this in a bounded loop
@@ -14,7 +14,7 @@ info:
     A 'granted' or 'denied' response marks the row 'used' on the server
     side so a later poll cannot re-consume the same approval.
 servers:
-  - url: https://func-sme.azurewebsites.net
+  - url: https://func-triage.azurewebsites.net
 paths:
   /api/approvals/status:
     post:

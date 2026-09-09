@@ -1,6 +1,6 @@
 openapi: "3.0.3"
 info:
-  title: SME DQ Flag API
+  title: BI Triage DQ Flag API
   version: "1.0.0"
   description: >
     Writes a duplicate-flag row into dbo.dq_flags. Called by the Triage Agent
@@ -8,7 +8,7 @@ info:
     Managed-identity auth: Foundry project MI presents a bearer token whose
     `aud` matches this Function App's App Registration.
 servers:
-  - url: https://func-sme.azurewebsites.net
+  - url: https://func-triage.azurewebsites.net
     description: Function App hostname.
 paths:
   /api/dq/flag:

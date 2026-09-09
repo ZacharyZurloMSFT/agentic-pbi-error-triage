@@ -13,9 +13,9 @@
 # a demo-tenant user) and this script picks it up from `demo_events`.
 #
 # Prereqs:
-#   * az login (any user that can hit api://func-sme)
-#   * $env:FUNCTION_APP_BASE_URL   e.g. https://func-sme.azurewebsites.net
-#   * $env:FUNCTION_APP_AUDIENCE   e.g. api://func-sme
+#   * az login (any user that can hit api://func-triage)
+#   * $env:FUNCTION_APP_BASE_URL   e.g. https://func-triage.azurewebsites.net
+#   * $env:FUNCTION_APP_AUDIENCE   e.g. api://func-triage
 #
 # Usage (typical):
 #   1. .\scripts\run-scenario.ps1 -Name scenario1-transient

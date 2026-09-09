@@ -1,13 +1,13 @@
 openapi: "3.0.3"
 info:
-  title: SME Demo Event Log
+  title: BI Triage Demo Event Log
   version: "1.0.0"
   description: >
     Insert a row into dbo.demo_events. Called by the Triage Agent once per
     stage of a run so the Demo Cockpit can render the Agent Flow tile in
     real time. Fire-and-forget; no reads. Cockpit reads via its own SQL path.
 servers:
-  - url: https://func-sme.azurewebsites.net
+  - url: https://func-triage.azurewebsites.net
     description: Function App hostname.
 paths:
   /api/log_event:

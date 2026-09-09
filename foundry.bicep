@@ -4,13 +4,13 @@ targetScope = 'resourceGroup'
 param location string = resourceGroup().location
 
 @description('AI Foundry account name (Microsoft.CognitiveServices/accounts, kind=AIServices).')
-param foundryAccountName string = 'ai-foundry-sme'
+param foundryAccountName string = 'ai-foundry-triage'
 
 @description('AI Foundry project name (child accounts/projects).')
-param foundryProjectName string = 'proj-sme'
+param foundryProjectName string = 'proj-triage'
 
 @description('Foundry project display name.')
-param foundryProjectDisplayName string = 'SME Triage Demo'
+param foundryProjectDisplayName string = 'BI Triage Demo'
 
 @description('Resource id of the delegated subnet (Microsoft.App/environments) for Foundry agent-runtime egress.')
 param foundrySubnetId string
@@ -49,8 +49,12 @@ resource foundryAccount 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
         useMicrosoftManagedNetwork: false
       }
     ]
-    // Inbound: disabled. Portal / control-plane is Entra-based; no inbound PE for the demo.
-    publicNetworkAccess: 'Disabled'
+    // Inbound: enabled. The demo trigger (demo-fire.ps1) POSTs directly to the
+    // Responses endpoint from the presenter's laptop over the public data plane;
+    // deploy-agents.ps1 does the same for the agent definitions. Access is
+    // still Entra-gated at both the control plane and the Function App via
+    // Easy Auth v2 + MI audience validation.
+    publicNetworkAccess: 'Enabled'
     // SFI: disable local (key) auth on the account
     disableLocalAuth: true
     customSubDomainName: foundryAccountName
@@ -67,7 +71,7 @@ resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-0
   }
   properties: {
     displayName: foundryProjectDisplayName
-    description: 'SME BI Triage demo — Triage + DQ agents'
+    description: 'BI Triage demo — Triage + DQ agents'
   }
 }
 

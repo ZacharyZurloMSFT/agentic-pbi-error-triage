@@ -105,7 +105,7 @@ Production: rough estimates for what would change.
 
 | What                        | Demo                                     | Production                                                                 |
 |-----------------------------|------------------------------------------|----------------------------------------------------------------------------|
-| Tenant                      | Microsoft demo tenant                    | SM Energy tenant with a proper subscription boundary                       |
+| Tenant                      | Microsoft demo tenant                    | the customer tenant with a proper subscription boundary                       |
 | Networking                  | Function App VNet-integrated + Easy Auth | Add Private Endpoints on SQL, PBI, Function App; egress lockdown           |
 | Identity                    | Foundry project MI + Function MI         | Same, plus per-agent MIs and per-workspace scoping                         |
 | Data plane                  | Azure SQL demo DB                        | Whichever source of truth the BI team owns; add reader roles per agent     |

@@ -187,7 +187,7 @@ for ($i = 1; $i -le $fireCount; $i++) {
 }
 
 Write-Host ""
-Write-Host "Next: within ~30s the func-sme poll_inbox timer will pick it up and invoke Triage."
+Write-Host "Next: within ~30s the func-triage poll_inbox timer will pick it up and invoke Triage."
 if ($Scenario -in @('approval_granted','approval_denied')) {
     Write-Host "→ HITL scenario: watch the Approvals tile in the cockpit." -ForegroundColor Cyan
     Write-Host "   For $Scenario, click $(if ($Scenario -eq 'approval_granted') { '✓ Approve' } else { '✗ Deny' }) when the row appears."

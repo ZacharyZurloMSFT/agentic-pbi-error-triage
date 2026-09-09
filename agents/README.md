@@ -1,6 +1,6 @@
-# Foundry agents — SME BI Triage demo
+# Foundry agents — BI Triage demo
 
-Two **prompt agents** for the SM Energy BI Triage demo (see `../PRD.md`).
+Two **prompt agents** for the the customer BI Triage demo (see `../PRD.md`).
 Declarative definitions live in `definitions/`; all runtime SQL + Graph work
 happens in the sibling Function App (`../function/`). No containers, no ACR.
 
@@ -23,12 +23,12 @@ agents/
 
 ```powershell
 # 0. Preconditions
-#    - foundry.bicep deployed (proj-sme + gpt-4o + MI)
+#    - foundry.bicep deployed (proj-triage + gpt-4o + MI)
 #    - `../bootstrap-func-app-reg.ps1` run once — creates the Entra app
-#      registration `func-sme` (api://func-sme, v2 tokens) that Easy Auth
+#      registration `func-triage` (api://func-triage, v2 tokens) that Easy Auth
 #      validates tokens against. Function App has no callers until this
 #      exists in the tenant.
-#    - function.bicep deployed (func-sme with Easy Auth allowing proj-sme MI)
+#    - function.bicep deployed (func-triage with Easy Auth allowing proj-triage MI)
 #    - grant-function-mi.sql run (Function MI has SQL access)
 #    - Teams-tenant SP exists with ChannelMessage.Send app permission,
 #      registered in Foundry as project connection 'teams-graph-sp':
@@ -37,8 +37,8 @@ agents/
 #    - Foundry project MI added to the target Power BI workspace as Contributor
 
 # 1. Env
-$env:AZURE_AI_PROJECT_ENDPOINT = 'https://ai-foundry-sme.services.ai.azure.com/api/projects/proj-sme'
-$env:FUNCTION_APP_AUDIENCE     = 'api://func-sme'    # matches function.bicep output
+$env:AZURE_AI_PROJECT_ENDPOINT = 'https://ai-foundry-triage.services.ai.azure.com/api/projects/proj-triage'
+$env:FUNCTION_APP_AUDIENCE     = 'api://func-triage'    # matches function.bicep output
 $env:TEAMS_TEAM_ID             = '<team-guid>'
 $env:TEAMS_CHANNEL_ID          = '<channel-id>'
 
@@ -76,7 +76,7 @@ azd ai agent invoke triage-agent --input-file $env:TEMP\s1.json --new-session
 
 | Caller                 | Callee                    | Mechanism                                                             |
 |------------------------|---------------------------|-----------------------------------------------------------------------|
-| Foundry project MI     | Function App              | Entra token, aud=`api://func-sme`. Easy Auth v2 allowedPrincipals gate |
+| Foundry project MI     | Function App              | Entra token, aud=`api://func-triage`. Easy Auth v2 allowedPrincipals gate |
 | Function App MI        | Azure SQL                 | AAD access token (`database.windows.net/.default`) via python-tds     |
 | Function App MI        | Microsoft Graph (mail)    | Application permission `Mail.ReadWrite` (poller only)                 |
 | Function App MI        | Foundry Responses (Triage)| `ai.azure.com/.default` (poller only)                                 |

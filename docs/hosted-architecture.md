@@ -10,7 +10,7 @@ short pointer to this file). The Mermaid diagram lives in
                      Foundry project MI
                     ┌───────────────────┐
                     │ audiences:        │
-                    │  * api://func-sme │───► Function App (Easy Auth v2, allowedPrincipals=this MI)
+                    │  * api://func-triage │───► Function App (Easy Auth v2, allowedPrincipals=this MI)
                     │  * ai.azure.com   │───► DQ agent Responses endpoint (a2a_preview)
                     │  * .../powerbi/api│───► Power BI REST (Contributor on workspace)
                     └───────────────────┘
@@ -128,7 +128,7 @@ consent.
 
 `cockpit/app.py` is a FastAPI proxy over `/api/demo/*`. It uses the
 presenter's `az login` token to talk to the Function App (audience
-`api://func-sme`). The cockpit holds no secrets and can be pointed at
+`api://func-triage`). The cockpit holds no secrets and can be pointed at
 any deployment by changing `FUNCTION_APP_BASE_URL`. Tiles:
 
 - **Agent Flow** — live view of `demo_events` grouped by run.

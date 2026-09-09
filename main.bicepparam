@@ -3,8 +3,8 @@
 
 using './main.bicep'
 
-param sqlServerName = readEnvironmentVariable('SQL_SERVER_NAME', 'sql-server-sme')
-param sqlDatabaseName = readEnvironmentVariable('SQL_DATABASE_NAME', 'sql-db-sme')
+param sqlServerName = readEnvironmentVariable('SQL_SERVER_NAME', 'sql-server-triage')
+param sqlDatabaseName = readEnvironmentVariable('SQL_DATABASE_NAME', 'sql-db-triage')
 param location = readEnvironmentVariable('AZURE_LOCATION', 'centralus')
 
 // Entra ID admin on the SQL server. All three are required — Azure SQL

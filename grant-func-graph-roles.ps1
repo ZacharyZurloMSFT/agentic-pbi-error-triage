@@ -1,4 +1,4 @@
-# Idempotently grant Microsoft Graph app roles to the func-sme managed
+# Idempotently grant Microsoft Graph app roles to the func-triage managed
 # identity so `poll_inbox` can list AND mark-as-read mail in the demo
 # mailbox, and the `demo_teams` tile can read Teams channel messages.
 #
@@ -41,8 +41,8 @@
 
 [CmdletBinding()]
 param(
-    [string] $FunctionAppName = 'func-sme',
-    [string] $ResourceGroup   = 'rg-sme'
+    [string] $FunctionAppName = 'func-triage',
+    [string] $ResourceGroup   = 'rg-triage'
 )
 
 $ErrorActionPreference = 'Stop'

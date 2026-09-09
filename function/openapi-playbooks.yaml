@@ -1,6 +1,6 @@
 openapi: "3.0.3"
 info:
-  title: SME Playbook Retrieval
+  title: BI Triage Playbook Retrieval
   version: "1.0.0"
   description: >
     Retrieve up to 3 documented failure-mode playbooks whose triggers match
@@ -8,7 +8,7 @@ info:
     part that changes the decision. Ported from the reference repo's
     knowledge/playbooks.py; sources are public Microsoft Learn pages only.
 servers:
-  - url: https://func-sme.azurewebsites.net
+  - url: https://func-triage.azurewebsites.net
 paths:
   /api/playbooks/lookup:
     post:

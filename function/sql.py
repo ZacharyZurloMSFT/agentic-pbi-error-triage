@@ -3,7 +3,7 @@
 Flex Consumption Python images don't ship msodbcsql18, so pyodbc is off the
 table. `python-tds` speaks TDS directly and accepts an AAD access token via
 the `access_token` kwarg. The Function App's system-assigned MI is granted
-db_datareader + db_datawriter on sql-db-sme (see grant-function-mi.sql).
+db_datareader + db_datawriter on sql-db-triage (see grant-function-mi.sql).
 """
 from __future__ import annotations
 
