@@ -56,6 +56,7 @@ $payload = switch ($Scenario) {
             error         = 'Refresh failed (simulated transient error)'
             source_table  = 'dbo.source_orders'
             key_column    = 'line_id'    # unique → clean verdict
+            simulate_refresh = $true
         }
     }
     'duplicates' {
@@ -87,6 +88,7 @@ $payload = switch ($Scenario) {
             error         = 'Refresh failed (simulated transient error)'
             source_table  = 'dbo.source_orders'
             key_column    = 'line_id'
+            simulate_refresh = $true
         }
     }
     'policy_block' {
@@ -101,6 +103,7 @@ $payload = switch ($Scenario) {
             source_table         = 'dbo.source_orders'
             key_column           = 'line_id'
             force_second_refresh  = $true
+            simulate_refresh     = $true
         }
     }
     'unknown_action' {

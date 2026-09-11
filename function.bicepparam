@@ -23,6 +23,10 @@ param triageEndpoint = readEnvironmentVariable('TRIAGE_ENDPOINT', '')
 param foundryAllowedPrincipals = [
   readEnvironmentVariable('FOUNDRY_PROJECT_MI_OBJECT_ID', '')
   readEnvironmentVariable('AAD_ADMIN_OBJECT_ID', '')
+  readEnvironmentVariable('TRIAGE_AGENT_MI_OBJECT_ID', '')
+  readEnvironmentVariable('DQ_AGENT_MI_OBJECT_ID', '')
+  readEnvironmentVariable('TRIAGE_AGENT_BLUEPRINT_ID', '')
+  readEnvironmentVariable('DQ_AGENT_BLUEPRINT_ID', '')
 ]
 
 param functionAppRegClientId = readEnvironmentVariable('FUNCTION_APP_REG_CLIENT_ID', '')
