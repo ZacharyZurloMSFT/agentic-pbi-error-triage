@@ -1,13 +1,13 @@
 openapi: "3.0.3"
 info:
-  title: SME DQ Check API
+  title: BI Triage DQ Check API
   version: "1.0.0"
   description: >
     Duplicate scan endpoint bound to the Foundry DQ Agent as an OpenAPI tool.
     Foundry calls this with managed-identity auth: the project MI presents a
     bearer token whose `aud` matches this Function App's App Registration.
 servers:
-  - url: https://func-sme.azurewebsites.net
+  - url: https://func-triage.azurewebsites.net
     description: Function App hostname.
 paths:
   /api/dq/check:

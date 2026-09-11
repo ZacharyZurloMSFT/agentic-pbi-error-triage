@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Technical walkthrough — SME BI Triage on Azure AI Foundry</title>
+<title>Technical walkthrough — BI Triage BI Triage on Azure AI Foundry</title>
 <link rel="stylesheet" href="walkthrough.css">
 </head>
 <body>
 
 <nav class="topnav">
-  <span class="brand">SME BI Triage <span>&middot;</span> Foundry</span>
+  <span class="brand">BI Triage BI Triage <span>&middot;</span> Foundry</span>
   <a href="#overview">Overview</a>
   <a href="#architecture">Architecture</a>
   <a href="#scenario-1">Scenario 1</a>
@@ -26,7 +26,7 @@
 <div class="wrap">
 
 <header class="hero">
-  <div class="eyebrow">Microsoft Foundry &middot; two connected prompt agents &middot; SM Energy demo</div>
+  <div class="eyebrow">Microsoft Foundry &middot; two connected prompt agents &middot; the customer demo</div>
   <h1>Technical walkthrough:<br>BI refresh triage with safety rails</h1>
   <p class="sub">
     A Triage Agent and a Data Quality Agent, wired in Microsoft Foundry, handle a simulated Power BI
@@ -68,12 +68,12 @@
         <td>Called by Triage over A2A (preview). Owns the flag write.</td>
       </tr>
       <tr>
-        <td><b>Function App <code>func-sme</code></b></td>
+        <td><b>Function App <code>func-triage</code></b></td>
         <td><span class="tag custom">Azure Functions (Python)</span></td>
         <td>DQ check, flag write, event log, incident dedup, policy ledger. Poller reads mailbox every 30s.</td>
       </tr>
       <tr>
-        <td><b>Azure SQL <code>sql-db-sme</code></b></td>
+        <td><b>Azure SQL <code>sql-db-triage</code></b></td>
         <td><span class="tag custom">Serverless</span></td>
         <td>5 tables: <code>source_orders</code>, <code>dq_flags</code>, <code>demo_events</code>, <code>incidents</code>, <code>policy_ledger</code>.</td>
       </tr>
@@ -132,11 +132,11 @@
      ┌────────────────────────┼────────────────────────┐
      │                        │                        │
      ▼                        ▼                        ▼
-  <b>func-sme</b>                 <b>func-sme</b>                <b>DQ Agent</b> (A2A)
+  <b>func-triage</b>                 <b>func-triage</b>                <b>DQ Agent</b> (A2A)
   <span class="w">/incidents</span>              <span class="w">/policy/charge</span>          same project, unpublished
   <span class="w">/policy/propose</span>         <span class="w">/log_event</span>              │
      │                        │                        ▼
-     ▼                        ▼                     <b>func-sme</b>
+     ▼                        ▼                     <b>func-triage</b>
   incidents                 policy_ledger           <span class="w">/dq/check</span>, <span class="w">/dq/flag</span>
      │                        │                        │
      └────────┬───────────────┴────────────┬───────────┘
@@ -149,8 +149,8 @@
   <table>
     <thead><tr><th>Caller</th><th>Callee</th><th>Mechanism</th></tr></thead>
     <tbody>
-      <tr><td>Foundry project MI</td><td>func-sme</td><td>Entra token, aud <code>api://func-sme</code>. Easy Auth v2 gate.</td></tr>
-      <tr><td>func-sme MI</td><td>Azure SQL</td><td>AAD access token, <code>database.windows.net/.default</code>.</td></tr>
+      <tr><td>Foundry project MI</td><td>func-triage</td><td>Entra token, aud <code>api://func-triage</code>. Easy Auth v2 gate.</td></tr>
+      <tr><td>func-triage MI</td><td>Azure SQL</td><td>AAD access token, <code>database.windows.net/.default</code>.</td></tr>
       <tr><td>Triage instance MI</td><td>DQ agent (A2A)</td><td>AgenticIdentityToken auth. Requires <code>Azure AI Developer</code> + <code>Cognitive Services User</code> on the account.</td></tr>
       <tr><td>Foundry project MI</td><td>Power BI REST</td><td>MI OpenAPI tool, aud <code>analysis.windows.net/powerbi/api</code>.</td></tr>
       <tr><td>Triage agent</td><td>Teams channel</td><td>Anonymous webhook (signed URL). No secrets in prompt.</td></tr>
@@ -297,11 +297,11 @@
 
   <h3>Function App</h3>
 <pre>cd function
-func azure functionapp publish func-sme --python</pre>
+func azure functionapp publish func-triage --python</pre>
 
   <h3>SQL schema (idempotent — adds new tables in place)</h3>
-<pre>POST https://func-sme.azurewebsites.net/api/demo/reset
-Authorization: Bearer &lt;api://func-sme token&gt;</pre>
+<pre>POST https://func-triage.azurewebsites.net/api/demo/reset
+Authorization: Bearer &lt;api://func-triage token&gt;</pre>
 
   <h3>Triage agent</h3>
 <pre>cd agents
@@ -315,18 +315,18 @@ Authorization: Bearer &lt;api://func-sme token&gt;</pre>
 <pre>az role assignment create --assignee-object-id &lt;new-mi&gt; \
   --assignee-principal-type ServicePrincipal \
   --role 'Azure AI Developer' \
-  --scope /subscriptions/.../accounts/ai-foundry-sme
+  --scope /subscriptions/.../accounts/ai-foundry-triage
 
 az role assignment create --assignee-object-id &lt;new-mi&gt; \
   --assignee-principal-type ServicePrincipal \
   --role 'Cognitive Services User' \
-  --scope /subscriptions/.../accounts/ai-foundry-sme</pre>
+  --scope /subscriptions/.../accounts/ai-foundry-triage</pre>
     Without these, the A2A hop fails with <code>Failed to fetch agent card: 404</code>.
   </div>
 </section>
 
 <footer>
-  Live tenant: <code>ai-foundry-sme / proj-sme</code>.
+  Live tenant: <code>ai-foundry-triage / proj-triage</code>.
   Six scenarios verified end-to-end 2026-08-31.
   Companion doc: <a href="PERSONAS.html">PERSONAS.html</a>.
 </footer>

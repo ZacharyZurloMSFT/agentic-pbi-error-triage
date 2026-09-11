@@ -1,6 +1,6 @@
 # docs/
 
-Handoff and rehearsal documentation for the SM Energy BI Triage demo.
+Handoff and rehearsal documentation for the the customer BI Triage demo.
 Written to be legible standalone (SharePoint / Teams renderers strip
 things they don't like — see `walkthrough/README.md`).
 

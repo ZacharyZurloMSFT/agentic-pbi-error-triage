@@ -1,6 +1,6 @@
 openapi: "3.0.3"
 info:
-  title: SME Policy Propose Action API
+  title: BI Triage Policy Propose Action API
   version: "1.0.0"
   description: >
     Allowlist gate for arbitrary proposed actions. The allowlist lives in the
@@ -8,7 +8,7 @@ info:
     reason, and the refusal is written to policy_ledger so the demo can point
     at it. The agent then escalates via Teams.
 servers:
-  - url: https://func-sme.azurewebsites.net
+  - url: https://func-triage.azurewebsites.net
     description: Function App hostname.
 paths:
   /api/policy/propose_action:

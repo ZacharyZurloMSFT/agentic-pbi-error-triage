@@ -4,10 +4,10 @@ targetScope = 'resourceGroup'
 param location string = resourceGroup().location
 
 @description('SQL logical server name.')
-param sqlServerName string = 'sql-server-sme'
+param sqlServerName string = 'sql-server-triage'
 
 @description('SQL database name.')
-param sqlDatabaseName string = 'sql-db-sme'
+param sqlDatabaseName string = 'sql-db-triage'
 
 @description('Entra ID object ID of the SQL AAD admin (user, group, or service principal).')
 param aadAdminObjectId string

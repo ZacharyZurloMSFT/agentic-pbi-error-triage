@@ -1,6 +1,6 @@
 openapi: "3.0.3"
 info:
-  title: SME Prompt Hash Lookup
+  title: BI Triage Prompt Hash Lookup
   version: "1.0.0"
   description: >
     Return the SHA-256 prefix of the currently deployed prompt for an
@@ -9,7 +9,7 @@ info:
     traceable in run history. Fails soft — a missing row returns an
     empty hash rather than breaking the run.
 servers:
-  - url: https://func-sme.azurewebsites.net
+  - url: https://func-triage.azurewebsites.net
 paths:
   /api/prompts/current:
     post:

@@ -1,4 +1,4 @@
-# Run sheet — SM Energy BI Triage live demo
+# Run sheet — the customer BI Triage live demo
 
 A pausable, ~60–90 minute script for the live demo. Every step lists
 what to say, what to click, and what to watch on screen. Two projectors
@@ -11,7 +11,7 @@ recommended: **cockpit** on one, **Foundry run trace** on the other.
       `incidents`, `policy_ledger`, `inbox_audit`, `approvals`.
 - [ ] `.\agents\deploy-agents.ps1` — ensures the current prompt hashes
       are in `dbo.prompt_versions`.
-- [ ] Load cockpit at `https://cockpit-sme.azurewebsites.net`; confirm:
+- [ ] Load cockpit at `https://cockpit-triage.azurewebsites.net`; confirm:
       poll heartbeat < 30s old, all tiles green, Teams tile empty.
 - [ ] Foundry run trace tab open on the DQ agent (empty runs list).
 - [ ] SharePoint tab open on `walkthrough/WALKTHROUGH.html` as a

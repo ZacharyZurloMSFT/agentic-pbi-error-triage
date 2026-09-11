@@ -9,14 +9,14 @@
 <body>
 
 <nav class="topnav">
-  <span class="brand">SME BI Triage <span>&middot;</span> Foundry</span>
+  <span class="brand">BI Triage BI Triage <span>&middot;</span> Foundry</span>
   <span class="docref">Technical walkthrough <b>WALKTHROUGH.html</b></span>
 </nav>
 
 <div class="wrap">
 
 <header class="hero">
-  <div class="eyebrow">BI Request Triage &amp; Resolution &middot; SM Energy demo</div>
+  <div class="eyebrow">BI Request Triage &amp; Resolution &middot; the customer demo</div>
   <h1>Persona scenario:<br>Power BI refresh failure</h1>
   <p class="sub">
     The same runs as the technical walkthrough, described from the user's side. Screenshots come
@@ -81,7 +81,7 @@
     <tbody>
       <tr><td><code>06:02</code></td><td>Scheduled refresh fails with a transient timeout on the semantic model.</td><td class="muted">&mdash;</td></tr>
       <tr><td><code>06:03</code></td><td>Power BI emails <code>bi-triage-demo@…</code>.</td><td class="muted">&mdash;</td></tr>
-      <tr><td><code>06:04</code></td><td>func-sme's <code>poll_inbox</code> timer picks up the mail, invokes Triage.</td><td class="muted">poller</td></tr>
+      <tr><td><code>06:04</code></td><td>func-triage's <code>poll_inbox</code> timer picks up the mail, invokes Triage.</td><td class="muted">poller</td></tr>
       <tr><td><code>06:04</code></td><td>Triage: <code>incidents.check_or_open</code> — first occurrence.</td><td class="muted">agent</td></tr>
       <tr><td><code>06:04</code></td><td>Triage delegates to DQ over A2A. DQ scans <code>source_orders</code>.</td><td class="muted">agent</td></tr>
       <tr><td><code>06:05</code></td><td>DQ returns <code>clean</code>. Triage charges the policy ledger, then calls PBI REST refresh.</td><td class="muted">agent</td></tr>
@@ -210,7 +210,7 @@
 
 <footer>
   Companion doc: <a href="WALKTHROUGH.html">WALKTHROUGH.html</a> for the technical view.
-  Live tenant: <code>ai-foundry-sme / proj-sme</code>. Runs verified 2026-08-31.
+  Live tenant: <code>ai-foundry-triage / proj-triage</code>. Runs verified 2026-08-31.
 </footer>
 
 </div>

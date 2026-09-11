@@ -1,13 +1,13 @@
-# Idempotently create the Entra App Registration that gates func-sme via
+# Idempotently create the Entra App Registration that gates func-triage via
 # Easy Auth v2. Foundry project MI (and any other allowedPrincipal) requests
-# a token with `aud=api://func-sme`; Easy Auth validates the token and then
+# a token with `aud=api://func-triage`; Easy Auth validates the token and then
 # checks the caller's oid against the allowedPrincipals list configured in
 # function.bicep.
 #
 # Why this isn't in bicep: App Registrations are Microsoft Graph resources
 # (Microsoft.Graph/applications), not ARM. Terraform + Bicep both treat
 # them as out-of-band. The tenant policy 'InvalidUniqueTenantIdentifierAsPerAppPolicy'
-# also blocks the short `api://func-sme` URI unless `requestedAccessTokenVersion=2`
+# also blocks the short `api://func-triage` URI unless `requestedAccessTokenVersion=2`
 # is set FIRST — bicep's ordering guarantees aren't sufficient there.
 #
 # Run this once per environment, before `azd up` or the first Foundry agent
@@ -17,8 +17,8 @@
 
 [CmdletBinding()]
 param(
-    [string] $DisplayName        = 'func-sme',
-    [string] $IdentifierUri      = 'api://func-sme',
+    [string] $DisplayName        = 'func-triage',
+    [string] $IdentifierUri      = 'api://func-triage',
     [ValidateSet('AzureADMyOrg','AzureADMultipleOrgs')]
     [string] $SignInAudience     = 'AzureADMyOrg'
 )
@@ -42,7 +42,7 @@ if ($existing.Count -eq 0) {
 $appObjectId = $app.id
 
 # 2. Force v2 tokens BEFORE setting identifierUri — the tenant policy
-#    'InvalidUniqueTenantIdentifierAsPerAppPolicy' rejects `api://func-sme`
+#    'InvalidUniqueTenantIdentifierAsPerAppPolicy' rejects `api://func-triage`
 #    unless requestedAccessTokenVersion=2 is already true.
 $patchV2 = @{ api = @{ requestedAccessTokenVersion = 2 } } | ConvertTo-Json -Compress
 $patchV2 | Set-Content -NoNewline "$env:TEMP\app-v2.json"
@@ -74,7 +74,7 @@ if ($sp.Count -eq 0) {
 
 # 4a. Expose a `user_impersonation` delegated scope so the Demo Cockpit
 #     (running on the presenter's laptop) can request a user-token for
-#     `api://func-sme` via `az account get-access-token`. Without this the
+#     `api://func-triage` via `az account get-access-token`. Without this the
 #     App Reg only accepts application (MI-to-MI) tokens.
 #     Pre-authorize the Azure CLI client (well-known appId
 #     04b07795-8ddb-461a-bbee-02f9e1bf7b46) so no interactive consent prompt
@@ -92,10 +92,10 @@ $hasUserImpersonation = $currentScopes | Where-Object { $_.value -eq 'user_imper
 if (-not $hasUserImpersonation) {
     $currentScopes += [ordered]@{
         id                      = $scopeGuid
-        adminConsentDescription = 'Allow the application to call func-sme as the signed-in user (Demo Cockpit).'
-        adminConsentDisplayName = 'Access func-sme as user'
-        userConsentDescription  = 'Allow the app to access func-sme on your behalf.'
-        userConsentDisplayName  = 'Access func-sme'
+        adminConsentDescription = 'Allow the application to call func-triage as the signed-in user (Demo Cockpit).'
+        adminConsentDisplayName = 'Access func-triage as user'
+        userConsentDescription  = 'Allow the app to access func-triage on your behalf.'
+        userConsentDisplayName  = 'Access func-triage'
         value                   = 'user_impersonation'
         type                    = 'User'
         isEnabled               = $true

@@ -30,7 +30,7 @@ For narrative context, start with:
 | AI Foundry account + project + `gpt-4o` deployment | `foundry.bicep` | MI-authenticated, VNet-injected agent runtime |
 | Function App (Flex Consumption, Python 3.11) | `function.bicep` | VNet-integrated, Easy Auth v2, MI on SQL + Graph |
 | Two prompt agents (Triage, DQ) | `agents/deploy-agents.ps1` | Declarative YAML in `agents/definitions/` |
-| Demo Cockpit (FastAPI) | `cockpit/` | Local dashboard — proxies func-sme via presenter's `az login` |
+| Demo Cockpit (FastAPI) | `cockpit/` | Local dashboard — proxies func-triage via presenter's `az login` |
 
 ---
 

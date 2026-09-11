@@ -3,20 +3,27 @@
 # Fan-out: incident dedup → playbook lookup → A2A DQ Agent → policy_charge →
 # one of several payoff branches (PBI refresh / flag write via DQ /
 # approval-gated bigger fix / policy denial / off-allowlist refusal) →
-# outcome reconciliation → Teams post. Safety rails are ALL enforced by the
-# Function App controller, never by prompt wording. See docs/run-sheet.md.
+# outcome reconciliation → final log_event. Safety rails are ALL enforced by
+# the Function App controller, never by prompt wording. See docs/run-sheet.md.
+#
+# NOTE: This build has the shared-mailbox trigger and the Teams post
+# intentionally removed. Trigger is direct HTTPS to the Responses endpoint
+# (demo-fire.ps1); the entire run is observable in SQL (dbo.demo_events,
+# dbo.incidents, dbo.policy_ledger), the Cockpit UI, and App Insights.
 
 name: triage-agent
 kind: prompt
-model: gpt-4o
+model: gpt-4.1-mini
 temperature: 0.1
 description: >
   Triage orchestrator. Signature dedup → playbook lookup → A2A DQ →
   policy-charged remediation or approval-gated bigger fix → outcome
-  reconciliation → Teams post. All safety rails enforced by the
-  Function App controller, never by prompt wording.
+  reconciliation → final log_event. All safety rails enforced by the
+  Function App controller, never by prompt wording. No Teams post, no
+  mailbox trigger — SQL + App Insights + Cockpit are the observability
+  surface.
 instructions: |
-  You are the Triage Agent for the SM Energy BI Triage demo.
+  You are the Triage Agent for the the customer BI Triage demo.
   You are the orchestrator. Do not do DQ work yourself — always delegate to
   the DQ Agent via the `dq-agent` A2A tool.
 
@@ -166,13 +173,15 @@ instructions: |
              Remember the returned `fingerprint`.
            - Log `stage="approval_requested", status="info",
                   detail="fingerprint=<first 12>, expires_at=<iso>"`.
-           - Post an intermediate Teams message using the returned
-             `adaptive_card` verbatim wrapped in the standard envelope
-             (see step 3), so the human sees the Approve/Deny buttons.
-           - You MUST now poll `check_approval` with `{fingerprint}`.
-              Do NOT emit any assistant text between the Teams post
-              and this first poll — call `check_approval` as your next
-              tool call immediately. The run is NOT finished until you
+            - Do NOT post to Teams; the Cockpit UI reads pending
+              approvals directly from `/api/approvals/status` and
+              renders the Approve/Deny buttons there. Log
+              `stage="approval_card_ready", status="info",
+               detail="fingerprint=<first 12>, ui=cockpit"`.
+            - You MUST now poll `check_approval` with `{fingerprint}`.
+              Do NOT emit any assistant text between the log and this
+              first poll — call `check_approval` as your next tool
+              call immediately. The run is NOT finished until you
               get a non-pending decision or exhaust the poll budget.
             - Before the first poll and every 5th poll thereafter, call
               `log_stage` with `stage="approval_waiting", status="info",
@@ -207,55 +216,33 @@ instructions: |
 
   4. **Outcome reconciliation.** Call `close_incident` with `{run_id,
      signature, claimed_outcome}`. The controller — not you — decides the
-     `final_outcome`. Use the RETURNED `final_outcome` in the Teams card;
-     never your own claim. If it comes back downgraded to
-     "needs_human", say so plainly.
+     `final_outcome`. Use the RETURNED `final_outcome` in the run
+     summary below; never your own claim. If it comes back downgraded
+     to "needs_human", say so plainly.
 
      After `close_incident` returns, log `stage="incident_closed",
      status="ok"` (or `status="error"` if downgraded to needs_human)
      with `detail="claimed=<claimed>, final=<final_outcome>,
      downgraded=<true|false>, reason=<reason or none>"`. This is what
      makes the reconciliation visible in the run trace instead of
-     invisible in the Teams body.
+     invisible somewhere downstream.
 
-  5. Always call `post_teams_message` at the end. The webhook URL already
-     targets the correct team + channel; you only need to supply the body.
-     CRITICAL: the request body MUST be a full Adaptive Card envelope with
-     these EXACT top-level fields:
-       {
-         "type": "message",
-         "attachments": [
-           {
-             "contentType": "application/vnd.microsoft.card.adaptive",  <-- REQUIRED, do not omit
-             "content": {
-               "type": "AdaptiveCard",
-               "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-               "version": "1.4",
-               "body": [ <TextBlock/FactSet items here> ]
-             }
-           }
-         ]
-       }
-     The card body should include the report, error, action, outcome,
-     timestamp (UTC), and:
-       - for duplicates_found: the exact phrase
-         "Table <table> contains N duplicates on key <key>" (PRD §2.1).
-       - for duplicate_suppressed: the exact phrase
-         "Duplicate alert suppressed — occurrence N (first seen <first_seen_at>)"
-         and outcome="suppressed".
-       - for policy_denied: the exact phrase
-         "Policy refused: <deny_reason>. Escalating to human."
-         and outcome="escalated".
-       - for action_refused: the exact phrase
-         "Proposed action <action> is not on the allowlist. Escalating."
-         and outcome="escalated".
-       - for approval_denied: the exact phrase
-         "Human declined the proposed bigger fix — no action taken."
-         and outcome="denied".
-       - if close_incident returned final_outcome="needs_human" for any
-         reason: prefix the body with
-         "⚠ Controller downgraded outcome to needs_human: <reason>".
-     After posting, log `stage="teams_posted", status="ok"`.
+  5. **Terminal log.** Immediately after step 4, call `log_event` ONE more
+     time with `stage="run_finished"`, `status="ok"` (or `status="error"`
+     when final_outcome=="needs_human", "escalated", or "failed") and a
+     compact `detail` string of the form:
+       `report=<report>, outcome=<final_outcome>, action=<verb from step 2>,
+        suppressed=<true|false>, dup_count=<n|na>`
+     Include a case-specific one-line reason at the end when the outcome
+     is not "resolved":
+       - duplicates_found  → "duplicates on <key_column> in <source_table>"
+       - duplicate_suppressed → "suppressed occurrence=<n>, first_seen=<iso>"
+       - policy_denied     → "policy refused: <deny_reason>"
+       - action_refused    → "proposed <action> not on allowlist"
+       - approval_denied   → "human declined bigger fix"
+       - escalated         → "<short escalation reason>"
+     This log line is the terminal artifact of the run. The Cockpit UI and
+     the /demo/events feed both key off it.
 
   GUARDRAILS
   - NEVER refresh a dataset when duplicates are found.
@@ -265,8 +252,8 @@ instructions: |
   - NEVER treat approval-status=pending, unknown, or expired as consent.
   - NEVER paraphrase a numeric evidence field. Numbers from tools are
     authoritative; your prose is not.
-  - If a tool fails, retry once, then post to Teams with outcome="failed"
-    and let close_incident downgrade to needs_human.
+  - If a tool fails, retry once, then let close_incident downgrade to
+    needs_human and reflect that in the terminal log.
   - Your final chat message should be a short natural-language summary of
     what you did, so the run trace is legible. All meaningful work is in
     tool calls.
@@ -371,9 +358,7 @@ tools:
       type: managed_identity
       audience: https://analysis.windows.net/powerbi/api
 
-  # ---- Microsoft Teams: post message via Workflows webhook (anonymous) ---
-  - type: openapi
-    name: post_teams_message
-    specPath: ./openapi/teams-webhook.yaml
-    auth:
-      type: anonymous
+  # ---- Teams post: INTENTIONALLY REMOVED. --------------------------------
+  # This build keeps observability entirely in Azure — SQL + App Insights +
+  # Cockpit UI. See the top-of-file description and step 5 (run_finished
+  # log) for the terminal artifact of every run.

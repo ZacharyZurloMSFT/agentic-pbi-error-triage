@@ -4,28 +4,28 @@ targetScope = 'resourceGroup'
 param location string = resourceGroup().location
 
 @description('Function App name (globally unique subdomain on azurewebsites.net).')
-param functionAppName string = 'func-sme-${uniqueString(resourceGroup().id)}'
+param functionAppName string = 'func-triage-${uniqueString(resourceGroup().id)}'
 
 @description('Function App Service Plan name (Flex Consumption FC1).')
-param planName string = 'plan-func-sme'
+param planName string = 'plan-func-triage'
 
 @description('Storage account for the Function runtime.')
-param storageName string = 'stfuncsme${uniqueString(resourceGroup().id)}'
+param storageName string = 'sttriage${uniqueString(resourceGroup().id)}'
 
 @description('Log Analytics workspace for App Insights.')
-param logAnalyticsName string = 'log-sme'
+param logAnalyticsName string = 'log-triage'
 
 @description('App Insights component name.')
-param appInsightsName string = 'appi-func-sme'
+param appInsightsName string = 'appi-func-triage'
 
 @description('Delegated Function VNet-integration subnet id (Microsoft.Web/serverFarms).')
 param functionSubnetId string
 
 @description('SQL server FQDN for the Function to reach via VNet integration + private DNS.')
-param sqlServerFqdn string = 'sql-server-sme.database.windows.net'
+param sqlServerFqdn string = 'sql-server-triage.database.windows.net'
 
 @description('SQL database name.')
-param sqlDatabaseName string = 'sql-db-sme'
+param sqlDatabaseName string = 'sql-db-triage'
 
 @description('Monitored mailbox UPN for the poller.')
 param mailboxUpn string = ''
@@ -35,6 +35,9 @@ param triageEndpoint string = ''
 
 @description('Foundry project managed-identity object ids allowed to call the Function via Easy Auth. Any caller whose token oid is in this list passes; anyone else gets 401.')
 param foundryAllowedPrincipals array
+
+@description('App Registration client (appId) that gates the Function via Easy Auth v2. Must match the appId of the App Registration whose identifierUri is `api://<functionAppName>`. Set via .env / function.bicepparam after bootstrap-func-app-reg.ps1 runs.')
+param functionAppRegClientId string
 
 @description('Resource id of the subnet used for private endpoints (must be in same VNet as the Function App).')
 param privateEndpointSubnetId string
@@ -105,7 +108,7 @@ resource storagePrivateDnsZones 'Microsoft.Network/privateDnsZones@2020-06-01' =
 
 resource storagePrivateDnsZoneVnetLinks 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = [for (grp, i) in storagePeGroups: {
   parent: storagePrivateDnsZones[i]
-  name: 'vnet-sme-link-${grp}'
+  name: 'vnet-triage-link-${grp}'
   location: 'global'
   properties: {
     registrationEnabled: false
@@ -284,7 +287,7 @@ resource authSettings 'Microsoft.Web/sites/config@2024-04-01' = {
         enabled: true
         registration: {
           openIdIssuer: 'https://sts.windows.net/${subscription().tenantId}/v2.0'
-          clientId: functionAppName
+          clientId: functionAppRegClientId
         }
         validation: {
           allowedAudiences: [

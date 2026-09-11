@@ -1,9 +1,9 @@
-"""Demo Cockpit — thin FastAPI proxy over the func-sme Function App.
+"""Demo Cockpit — thin FastAPI proxy over the func-triage Function App.
 
-All reads (inbox, event log, data, teams) go through func-sme's /api/demo/*
+All reads (inbox, event log, data, teams) go through func-triage's /api/demo/*
 endpoints. The Function App is the VNet-side broker with SQL + Graph app
 permissions already granted to its managed identity — the cockpit only needs
-a valid api://func-sme bearer token, acquired from the presenter's `az login`
+a valid api://func-triage bearer token, acquired from the presenter's `az login`
 via DefaultAzureCredential.
 
 Run locally:
@@ -65,8 +65,8 @@ for name in ("httpx", "uvicorn.access"):
 
 # --------------------------- Config -------------------------------------
 
-FUNCTION_URL        = os.environ.get("FUNCTION_URL", "https://func-sme.azurewebsites.net").rstrip("/")
-FUNCTION_AUDIENCE   = os.environ.get("FUNCTION_AUDIENCE", "api://func-sme")
+FUNCTION_URL        = os.environ.get("FUNCTION_URL", "https://func-triage.azurewebsites.net").rstrip("/")
+FUNCTION_AUDIENCE   = os.environ.get("FUNCTION_AUDIENCE", "api://func-triage")
 MAILBOX_UPN         = os.environ.get("MAILBOX_UPN", "")
 FOUNDRY_PROJECT_URL = os.environ.get("FOUNDRY_PROJECT_URL", "https://ai.azure.com/")
 POLL_INTERVAL_SEC   = int(os.environ.get("POLL_INTERVAL_SEC", "2"))
@@ -174,7 +174,7 @@ async def _forward(
         _token_cache.pop(FUNCTION_AUDIENCE.rstrip("/") + "/.default", None)
         raise HTTPException(
             401,
-            f"func-sme rejected our token (Easy Auth). "
+            f"func-triage rejected our token (Easy Auth). "
             f"Confirm your Entra OID is in allowedPrincipals for aud={FUNCTION_AUDIENCE}. "
             f"Body: {r.text[:300]}",
         )
@@ -331,7 +331,7 @@ async def _startup() -> None:
     log.info("Cockpit starting")
     log.info("  FUNCTION_URL       = %s", FUNCTION_URL)
     log.info("  FUNCTION_AUDIENCE  = %s", FUNCTION_AUDIENCE)
-    log.info("  MAILBOX_UPN        = %s (proxied via func-sme)", MAILBOX_UPN)
+    log.info("  MAILBOX_UPN        = %s (proxied via func-triage)", MAILBOX_UPN)
     log.info("  FOUNDRY_PROJECT_URL= %s", FOUNDRY_PROJECT_URL)
     log.info("  POLL_INTERVAL_SEC  = %d", POLL_INTERVAL_SEC)
 
@@ -350,11 +350,11 @@ async def _startup() -> None:
 
     try:
         _ = await _func_token()
-        log.info("  func-sme token     = ok")
+        log.info("  func-triage token     = ok")
     except Exception as exc:
         log.warning(
-            "  func-sme token FAILED: %s -- run 'az login' and confirm your "
-            "Entra OID is in func-sme's Easy Auth allowedPrincipals.",
+            "  func-triage token FAILED: %s -- run 'az login' and confirm your "
+            "Entra OID is in func-triage's Easy Auth allowedPrincipals.",
             exc,
         )
 

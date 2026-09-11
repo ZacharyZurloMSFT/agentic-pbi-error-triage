@@ -1,4 +1,4 @@
-# Architecture — SM Energy BI Triage Demo
+# Architecture — the customer BI Triage Demo
 
 > Full walkthrough (identity graph, SQL schema, end-to-end data flow,
 > approval path) has moved to [`docs/hosted-architecture.md`](./docs/hosted-architecture.md).
@@ -67,6 +67,6 @@ flowchart LR
 - **Actions:** Power BI REST refresh (MI-auth OpenAPI tool) or `dq/flag`
   write; Teams post via cross-tenant SP.
 - **Cockpit:** read-only FastAPI proxy over `/api/demo/*` using the same
-  `api://func-sme` audience, acquired via the presenter's `az login`.
+  `api://func-triage` audience, acquired via the presenter's `az login`.
 - **Identity:** Foundry MI → Function App + PBI; Function MI → SQL + Graph
   mail; Teams SP for cross-tenant Graph.

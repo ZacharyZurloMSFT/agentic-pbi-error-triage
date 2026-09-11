@@ -4,10 +4,10 @@ targetScope = 'resourceGroup'
 param location string = resourceGroup().location
 
 @description('Existing SQL logical server name to attach the private endpoint to.')
-param sqlServerName string = 'sql-server-sme'
+param sqlServerName string = 'sql-server-triage'
 
 @description('VNet name.')
-param vnetName string = 'vnet-sme'
+param vnetName string = 'vnet-triage'
 
 @description('VNet address space.')
 param vnetAddressPrefix string = '10.50.0.0/24'
@@ -37,7 +37,7 @@ param functionSubnetName string = 'snet-func'
 param functionSubnetPrefix string = '10.50.0.128/28'
 
 @description('Private endpoint name for SQL.')
-param sqlPrivateEndpointName string = 'pe-sql-server-sme'
+param sqlPrivateEndpointName string = 'pe-sql-server-triage'
 
 var sqlPrivateDnsZoneName = 'privatelink.database.windows.net'
 

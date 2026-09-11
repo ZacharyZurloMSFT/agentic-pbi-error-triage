@@ -3,7 +3,7 @@
     Demo helper — inspect + reset SQL state via the Function App.
 
 .DESCRIPTION
-    sql-db-sme sits behind a private endpoint, so all SQL access from a
+    sql-db-triage sits behind a private endpoint, so all SQL access from a
     demo operator's laptop happens through the Function App (which lives
     in the VNet, has MI on the DB, and is fronted by Easy Auth). This
     replaces the previous ACI-jumpbox flow.
@@ -33,8 +33,8 @@ param(
     [ValidateSet('reset','seed','flags','rows','cleanup')]
     [string]$Mode = 'flags',
 
-    [string]$FunctionHost = 'func-sme.azurewebsites.net',
-    [string]$FunctionAudience = 'api://func-sme'
+    [string]$FunctionHost = 'func-triage.azurewebsites.net',
+    [string]$FunctionAudience = 'api://func-triage'
 )
 
 $ErrorActionPreference = 'Stop'

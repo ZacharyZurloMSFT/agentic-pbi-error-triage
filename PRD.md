@@ -1,4 +1,4 @@
-# PRD — SM Energy BI Triage Demo (Foundry Agent-to-Agent)
+# PRD — the customer BI Triage Demo (Foundry Agent-to-Agent)
 
 **Owner:** Zach Zurlo
 **Audience:** Alice (sponsor), Jared (co-sponsor), Kendra (decision-maker being briefed)
@@ -9,7 +9,7 @@
 
 ## 1. Problem & goal
 
-SM Energy's AAET team is evaluating Microsoft Foundry as the platform for an internal, long-term agentic BI operations capability. The reference workflow is BI Request Triage & Resolution (see attached flow). Alice needs a live, interactive demo that proves Foundry can do genuine **agent-to-agent orchestration** on Microsoft-native rails (Power BI, Graph, Power BI REST) — not one agent with helper tools.
+the customer's AAET team is evaluating Microsoft Foundry as the platform for an internal, long-term agentic BI operations capability. The reference workflow is BI Request Triage & Resolution (see attached flow). Alice needs a live, interactive demo that proves Foundry can do genuine **agent-to-agent orchestration** on Microsoft-native rails (Power BI, Graph, Power BI REST) — not one agent with helper tools.
 
 Kendra is the decision-maker being briefed. Databricks delivered a ~90-minute end-to-end demo against a less-detailed version of this scope, so cohesion and end-to-end feel are the scoring bar. The further the demo pushes toward "an end-to-end agentic platform with bells and whistles that people can build on," the better.
 
@@ -130,7 +130,7 @@ Every deny is a `policy_ledger` row. Every suppressed alert is an `incidents` oc
 2. **Observability** — Foundry tracing (Application Insights backing store). Failed runs surface as an error span in the parent trace; Teams post includes a deep link.
 3. **Email trigger — polling vs. event-driven & latency** — Graph change notifications (webhook/subscription) on the mailbox; fall back to a short-interval poll if webhook setup on the demo tenant is fiddly. First-action latency target: <30s.
 4. **Auth model** — Entra ID identities on every hop, no long-lived secrets except the cross-tenant Teams SP.
-   - **Foundry project MI → Function App**: Entra token with `aud=api://func-sme`; Function App Easy Auth v2 restricts callers to the project MI's oid.
+   - **Foundry project MI → Function App**: Entra token with `aud=api://func-triage`; Function App Easy Auth v2 restricts callers to the project MI's oid.
    - **Function App MI → Azure SQL**: AAD access token acquired via `DefaultAzureCredential`, passed to python-tds. DB user granted `db_datareader + db_datawriter + db_ddladmin` (SID-based, no Directory Readers dependency).
    - **Function App MI → Microsoft Graph (mail)**: `Mail.ReadWrite` application permission (poller only).
    - **Foundry project MI → Power BI REST**: OpenAPI tool with managed-identity auth, audience `https://analysis.windows.net/powerbi/api`. MI added to the demo workspace as Contributor.
@@ -222,7 +222,7 @@ flowchart LR
         FnMI["Function App MI"]
         TSP["Teams-tenant SP<br/>(client secret)"]
     end
-    FMI  -.aud=api://func-sme.-> FuncApp
+    FMI  -.aud=api://func-triage.-> FuncApp
     FMI  -.PBI REST.-> PBI
     TSP  -.Graph Teams.-> Notify
     FnMI -.SQL access token.-> Data

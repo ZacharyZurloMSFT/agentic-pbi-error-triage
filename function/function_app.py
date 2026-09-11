@@ -59,6 +59,12 @@ DEMO_SUBJECT_PREFIX = os.environ.get("DEMO_SUBJECT_PREFIX", "[BI-DEMO]")
 # Invalid regex refuses to poll; the poller writes an inbox_audit row and
 # stops. Never widen this to make the demo "find something".
 DEMO_SUBJECT_PATTERN = os.environ.get("DEMO_SUBJECT_PATTERN", r"^\[BI-DEMO\]")
+# The mailbox poller is OFF by default in this build. The demo uses a direct
+# HTTPS call to the Triage Responses endpoint (demo-fire.ps1) instead of a
+# shared-inbox trigger, and the Graph Mail.Read app-role is no longer granted
+# to the Function App MI. Set ENABLE_MAIL_POLLER=1 to re-enable — you will
+# also need to (re)grant the Graph roles via grant-func-graph-roles.ps1.
+ENABLE_MAIL_POLLER = os.environ.get("ENABLE_MAIL_POLLER", "0") == "1"
 
 # Todo #7: HMAC secret for approval fingerprints. If unset, approvals
 # refuse to issue — an approval without a signing secret is a joke.
@@ -1296,6 +1302,13 @@ def _write_poll_heartbeat(message_count: int) -> None:
     use_monitor=False,
 )
 def poll_inbox(timer: func.TimerRequest) -> None:
+    if not ENABLE_MAIL_POLLER:
+        # Shared-inbox trigger is intentionally OFF in this build. See the
+        # ENABLE_MAIL_POLLER note at the top of the module. Heartbeat is
+        # still emitted so the cockpit's mailbox tile shows "disabled"
+        # instead of "never ticked".
+        _write_poll_heartbeat(-1)
+        return
     if not MAILBOX_UPN or not TRIAGE_ENDPOINT:
         logging.warning("poll_inbox skipped — MAILBOX_UPN / TRIAGE_ENDPOINT not set")
         _write_poll_heartbeat(0)

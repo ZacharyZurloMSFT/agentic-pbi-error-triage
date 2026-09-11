@@ -3,7 +3,7 @@
     Reset the demo state directly — bypasses the cockpit.
 
 .DESCRIPTION
-    Hits /api/demo/cleanup on func-sme with a timing check. This is the
+    Hits /api/demo/cleanup on func-triage with a timing check. This is the
     presenter's escape hatch when the cockpit's Reset button gets wedged
     on uvicorn worker state, browser fetch queues, or MI token loops.
 
@@ -38,8 +38,8 @@
 [CmdletBinding()]
 param(
     [switch]$MarkRead,
-    [string]$FunctionHost     = $(if ($env:FUNCTION_APP_NAME) { "$($env:FUNCTION_APP_NAME).azurewebsites.net" } else { 'func-sme.azurewebsites.net' }),
-    [string]$FunctionAudience = $(if ($env:FUNCTION_APP_AUDIENCE) { $env:FUNCTION_APP_AUDIENCE } else { 'api://func-sme' }),
+    [string]$FunctionHost     = $(if ($env:FUNCTION_APP_NAME) { "$($env:FUNCTION_APP_NAME).azurewebsites.net" } else { 'func-triage.azurewebsites.net' }),
+    [string]$FunctionAudience = $(if ($env:FUNCTION_APP_AUDIENCE) { $env:FUNCTION_APP_AUDIENCE } else { 'api://func-triage' }),
     [string]$MailboxUpn       = $(if ($env:MAILBOX_UPN) { $env:MAILBOX_UPN } else { '' })
 )
 

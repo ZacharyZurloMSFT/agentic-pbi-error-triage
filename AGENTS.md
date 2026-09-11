@@ -9,7 +9,7 @@ A live demo of a multi-agent BI triage loop on Azure AI Foundry, running
 against a real Microsoft demo tenant (not offline). Two Foundry **prompt
 agents** — Triage and DQ — talk to each other via `a2a_preview`. All
 guardrails and side-effecting work live in a Python **Function App**
-controller. The demo is a customer-facing artifact for SM Energy;
+controller. The demo is a customer-facing artifact for the customer;
 optimise for legibility and for being able to explain any line of it
 out loud.
 
@@ -18,7 +18,7 @@ out loud.
 ```powershell
 # Deploy the Function App (Python)
 cd function
-func azure functionapp publish func-sme --python
+func azure functionapp publish func-triage --python
 
 # One-time per environment: grant Graph app roles to the Function App MI
 # (Mail.Read + Mail.ReadWrite + Mail.Send). Idempotent.
@@ -154,7 +154,7 @@ once. If you find yourself weakening one, change the scenario instead.
 ## Never
 
 - Commit a filled `.env`, a webhook URL, or any token.
-- Put a customer identifier in a committed file (SM Energy is fine;
+- Put a customer identifier in a committed file (the customer is fine;
   personal emails, TPIDs, or real workspace GUIDs are not).
 - Add a network call to the deploy pipeline that requires a laptop to
   be online at demo time.

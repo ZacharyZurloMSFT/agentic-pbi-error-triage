@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Deploy the DQ and Triage prompt agents into the SME Foundry project.
+    Deploy the DQ and Triage prompt agents into the Foundry Triage project.
 
 .DESCRIPTION
     Reads the two declarative agent definitions in ./definitions/, inlines
@@ -16,7 +16,7 @@
 
 .PARAMETER ProjectEndpoint
     Foundry project endpoint, e.g.
-    https://ai-foundry-sme.services.ai.azure.com/api/projects/proj-sme
+    https://ai-foundry-triage.services.ai.azure.com/api/projects/proj-triage
     Falls back to $env:AZURE_AI_PROJECT_ENDPOINT.
 
 .PARAMETER Only
@@ -24,8 +24,8 @@
 
 .EXAMPLE
     # First run — set env vars, then deploy both agents
-    $env:AZURE_AI_PROJECT_ENDPOINT = 'https://ai-foundry-sme.services.ai.azure.com/api/projects/proj-sme'
-    $env:FUNCTION_APP_AUDIENCE     = 'api://func-sme'
+    $env:AZURE_AI_PROJECT_ENDPOINT = 'https://ai-foundry-triage.services.ai.azure.com/api/projects/proj-triage'
+    $env:FUNCTION_APP_AUDIENCE     = 'api://func-triage'
     $env:TEAMS_TEAM_ID             = '<team-guid>'
     $env:TEAMS_CHANNEL_ID          = '<channel-id>'
     .\deploy-agents.ps1

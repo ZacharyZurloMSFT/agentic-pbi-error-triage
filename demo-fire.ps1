@@ -43,8 +43,8 @@ $ErrorActionPreference = 'Stop'
 
 $WORKSPACE_ID = if ($env:PBI_WORKSPACE_ID) { $env:PBI_WORKSPACE_ID } else { throw 'PBI_WORKSPACE_ID is not set. Dot-source scripts\load-env.ps1 first.' }
 $DATASET_ID   = if ($env:PBI_DATASET_ID)   { $env:PBI_DATASET_ID }   else { throw 'PBI_DATASET_ID is not set. Dot-source scripts\load-env.ps1 first.' }
-$foundryBase  = if ($env:FOUNDRY_ACCOUNT_NAME) { $env:FOUNDRY_ACCOUNT_NAME } else { 'ai-foundry-sme' }
-$foundryProj  = if ($env:FOUNDRY_PROJECT_NAME) { $env:FOUNDRY_PROJECT_NAME } else { 'proj-sme' }
+$foundryBase  = if ($env:FOUNDRY_ACCOUNT_NAME) { $env:FOUNDRY_ACCOUNT_NAME } else { 'ai-foundry-triage' }
+$foundryProj  = if ($env:FOUNDRY_PROJECT_NAME) { $env:FOUNDRY_PROJECT_NAME } else { 'proj-triage' }
 $TRIAGE_URL   = "https://$foundryBase.services.ai.azure.com/api/projects/$foundryProj/agents/triage-agent/endpoint/protocols/openai/responses?api-version=v1"
 
 $payload = switch ($Scenario) {
@@ -56,6 +56,7 @@ $payload = switch ($Scenario) {
             error         = 'Refresh failed (simulated transient error)'
             source_table  = 'dbo.source_orders'
             key_column    = 'line_id'    # unique → clean verdict
+            simulate_refresh = $true
         }
     }
     'duplicates' {
@@ -87,6 +88,7 @@ $payload = switch ($Scenario) {
             error         = 'Refresh failed (simulated transient error)'
             source_table  = 'dbo.source_orders'
             key_column    = 'line_id'
+            simulate_refresh = $true
         }
     }
     'policy_block' {
@@ -101,6 +103,7 @@ $payload = switch ($Scenario) {
             source_table         = 'dbo.source_orders'
             key_column           = 'line_id'
             force_second_refresh  = $true
+            simulate_refresh     = $true
         }
     }
     'unknown_action' {
