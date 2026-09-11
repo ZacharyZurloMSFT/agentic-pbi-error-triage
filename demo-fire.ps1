@@ -142,6 +142,39 @@ $body = @{ input = ($payload | ConvertTo-Json -Compress) } | ConvertTo-Json -Com
 # the incident row exists so /incidents/check_or_open returns suppress.
 $fireCount = if ($Scenario -eq 'known_issue') { 2 } else { 1 }
 
+# Windows toast on completion. Zero-config — uses the built-in NotifyIcon API
+# on any modern Windows box (Windows 10 / 11 render it as a real toast).
+function Send-DemoToast {
+    param(
+        [string]$Title,
+        [string]$Body,
+        [ValidateSet('Info','Warning','Error')]
+        [string]$Kind = 'Info'
+    )
+    try {
+        Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
+        Add-Type -AssemblyName System.Drawing       -ErrorAction Stop
+        $balloon = New-Object System.Windows.Forms.NotifyIcon
+        $icon = switch ($Kind) {
+            'Error'   { [System.Drawing.SystemIcons]::Error }
+            'Warning' { [System.Drawing.SystemIcons]::Warning }
+            default   { [System.Drawing.SystemIcons]::Information }
+        }
+        $balloon.Icon        = $icon
+        $balloon.BalloonTipIcon  = [System.Windows.Forms.ToolTipIcon]::$Kind
+        $balloon.BalloonTipTitle = $Title
+        $balloon.BalloonTipText  = $Body
+        $balloon.Visible = $true
+        $balloon.ShowBalloonTip(10000)
+        # Give the shell a moment to render before we let the object dispose.
+        Start-Sleep -Milliseconds 500
+        # Console bell too — audible cue.
+        [System.Media.SystemSounds]::Asterisk.Play()
+    } catch {
+        # Toasts are a nice-to-have — never let a display glitch break the run.
+    }
+}
+
 for ($i = 1; $i -le $fireCount; $i++) {
     if ($fireCount -gt 1) {
         Write-Host ""
@@ -158,17 +191,26 @@ for ($i = 1; $i -le $fireCount; $i++) {
         Write-Host "Elapsed         : $([int]$sw.Elapsed.TotalSeconds)s"
         Write-Host ""
         Write-Host "Triage summary:" -ForegroundColor Yellow
-        ($resp.output | Where-Object type -eq 'message').content[0].text
+        $summary = ($resp.output | Where-Object type -eq 'message').content[0].text
+        $summary
         Write-Host ""
         Write-Host "Tools invoked:" -ForegroundColor Yellow
         ($resp.output | Where-Object type -eq 'function_call') | ForEach-Object { "  * $($_.name)" }
+
+        # Toast — only fire on the LAST run of a multi-fire scenario.
+        if ($i -eq $fireCount) {
+            $toastBody = "Scenario '$Scenario' finished in $([int]$sw.Elapsed.TotalSeconds)s. `n" + `
+                         ($summary -split "`n" | Select-Object -First 2 | Out-String).Trim()
+            Send-DemoToast -Title "BI Triage: $Scenario ✓" -Body $toastBody -Kind Info
+        }
     } catch {
         $sw.Stop()
         Write-Host "Foundry status  : FAILED after $([int]$sw.Elapsed.TotalSeconds)s" -ForegroundColor Red
-        if ($_.ErrorDetails) {
-            Write-Host ($_.ErrorDetails.Message)
-        } else {
-            Write-Host $_.Exception.Message
+        $errMsg = if ($_.ErrorDetails) { $_.ErrorDetails.Message } else { $_.Exception.Message }
+        Write-Host $errMsg
+        if ($i -eq $fireCount) {
+            $preview = ($errMsg -split "`n" | Select-Object -First 3 | Out-String).Trim()
+            Send-DemoToast -Title "BI Triage: $Scenario ✗ FAILED" -Body $preview -Kind Error
         }
     }
     if ($i -lt $fireCount) {
